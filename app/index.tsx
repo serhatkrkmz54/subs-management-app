@@ -27,10 +27,19 @@ export default function Welcome() {
 
           <TouchableOpacity 
             style={styles.button}
-            onPress={() => router.replace('/home')}
+            onPress={() => router.replace('/register')}
           >
             <Text style={styles.buttonText}>Abonelik ekranımı oluştur!</Text>
             <Text style={styles.arrow}>→</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.loginLink}>
+            <View style={styles.loginTextContainer}>
+              <Text style={styles.loginText}>Üyeliğiniz var mı? </Text>
+              <TouchableOpacity onPress={() => router.replace('/login')}>
+                <Text style={styles.loginTextHighlight}>Giriş yapın</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </View>
       </ImageBackground>
@@ -104,5 +113,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     fontFamily: 'Poppins-Medium',
-  }
+  },
+  loginLink: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loginTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loginText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    opacity: 0.8,
+  },
+  loginTextHighlight: {
+    color: '#9799FF',
+    fontSize: 14,
+    fontFamily: 'Poppins-Medium',
+  },
 }); 
