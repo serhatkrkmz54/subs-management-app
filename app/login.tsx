@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  Platform
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Feather } from '@expo/vector-icons';
@@ -56,9 +63,7 @@ export default function Login() {
         password
       });
 
-      // Token'ı AsyncStorage'a kaydet
       await AsyncStorage.setItem('userToken', response.data.token);
-
       Toast.show({
         type: 'success',
         text1: 'Başarılı',
@@ -66,14 +71,20 @@ export default function Login() {
       });
 
       setTimeout(() => {
-        router.replace('/(app)/home');
+        router.replace('/home');
       }, 1000);
 
     } catch (error: any) {
+      let errorMessage = 'Giriş yapılamadı.';
+      
+      if (error.response?.data?.message === 'Bad credentials') {
+        errorMessage = 'E-posta adresi veya şifre hatalı.';
+      }
+
       Toast.show({
         type: 'error',
         text1: 'Hata',
-        text2: error.response?.data?.message || 'Giriş yapılamadı.',
+        text2: errorMessage,
       });
     } finally {
       setLoading(false);
@@ -81,11 +92,7 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+    <View style={styles.container}>
       <View style={styles.content}>
         <BackButton />
         
@@ -119,6 +126,7 @@ export default function Login() {
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
+              returnKeyType="done"
             />
             <TouchableOpacity 
               style={styles.eyeIcon}
@@ -144,14 +152,14 @@ export default function Login() {
 
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Hesabınız yok mu? </Text>
-            <TouchableOpacity onPress={() => router.push('register')}>
+            <TouchableOpacity onPress={() => router.push('/register')}>
               <Text style={styles.registerLink}>Kayıt Olun</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
       <Toast />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -243,4 +251,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-SemiBold',
     color: '#9799FF',
   },
-}); 
+});
