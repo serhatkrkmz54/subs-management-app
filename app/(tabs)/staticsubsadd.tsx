@@ -1,0 +1,351 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, TextInput, ScrollView } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { Feather } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+export default function StaticSubsAdd() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [formData, setFormData] = useState({
+    platformName: params.platformName as string,
+    packageName: params.packageName as string,
+    amount: params.amount as string,
+    currency: params.currency as string,
+    frequency: params.frequency as string,
+    cardName: '',
+    last4Digits: '',
+    bitisTarihi: ''
+  });
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setFormData({ ...formData, bitisTarihi: formatDate(selectedDate) });
+    }
+  };
+
+  const getLogoPath = (platformName: string) => {
+    const logoMap: { [key: string]: any } = {
+      'Netflix': require('../../assets/images/platform-logo/netflix-big-logo.png'),
+      'Spotify Premium': require('../../assets/images/platform-logo/spotify-big-logo.png'),
+      'Youtube Premium': require('../../assets/images/platform-logo/youtube-big-logo.png'),
+      'Amazon Prime': require('../../assets/images/platform-logo/prime-big-logo.png'),
+      'Disney+': require('../../assets/images/platform-logo/disneyplus-big-logo.png'),
+      'Apple Music': require('../../assets/images/platform-logo/applemusic-big-logo.png'),
+      'Tabii': require('../../assets/images/platform-logo/tabii-big-logo.png'),
+      'ChatGPT': require('../../assets/images/platform-logo/chatgpt-big-logo.png')
+    };
+    return logoMap[platformName] || require('../../assets/images/default-user.jpg');
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.cardName || !formData.last4Digits || !formData.bitisTarihi) {
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Lütfen tüm alanları doldurun.',
+      });
+      return;
+    }
+
+    if (formData.last4Digits.length !== 4) {
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Kart numarasının son 4 hanesi 4 karakter olmalıdır.',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      
+      await axios.post(
+        `http://10.0.2.2:8080/payment-plan/add/${params.id}`,
+        {
+          platformName: formData.platformName,
+          packageName: formData.packageName,
+          amount: formData.amount,
+          currency: formData.currency,
+          frequency: formData.frequency,
+          cardName: formData.cardName,
+          last4Digits: formData.last4Digits,
+          bitisTarihi: formData.bitisTarihi
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      Toast.show({
+        type: 'success',
+        text1: 'Başarılı',
+        text2: 'Abonelik başarıyla eklendi.',
+      });
+
+      setTimeout(() => {
+        router.replace('/home');
+      }, 2000);
+
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Abonelik eklenirken bir hata oluştu.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Abonelik Ekle</Text>
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.logoContainer}>
+          <Image 
+            source={getLogoPath(formData.platformName)} 
+            style={styles.platformLogo}
+          />
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Abonelik Adı</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.platformName}
+              onChangeText={(text) => setFormData({ ...formData, platformName: text })}
+              placeholder="Abonelik adını girin"
+              placeholderTextColor="#71727A"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Paket Adı</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.packageName}
+              onChangeText={(text) => setFormData({ ...formData, packageName: text })}
+              placeholder="Paket adını girin"
+              placeholderTextColor="#71727A"
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Ödeme Miktarı</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.amount}
+                onChangeText={(text) => setFormData({ ...formData, amount: text })}
+                placeholder="Miktar"
+                placeholderTextColor="#71727A"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+              <Text style={styles.label}>Ödeme Birimi</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.currency}
+                onChangeText={(text) => setFormData({ ...formData, currency: text })}
+                placeholder="Birim"
+                placeholderTextColor="#71727A"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Ödeme Sıklığı</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.frequency}
+              onChangeText={(text) => setFormData({ ...formData, frequency: text })}
+              placeholder="Ödeme sıklığını girin"
+              placeholderTextColor="#71727A"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Kart Üzerindeki İsim</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.cardName}
+              onChangeText={(text) => setFormData({ ...formData, cardName: text })}
+              placeholder="Kart üzerindeki ismi girin"
+              placeholderTextColor="#71727A"
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Son 4 Hane</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.last4Digits}
+                onChangeText={(text) => setFormData({ ...formData, last4Digits: text.replace(/[^0-9]/g, '').slice(0, 4) })}
+                placeholder="****"
+                placeholderTextColor="#71727A"
+                keyboardType="numeric"
+                maxLength={4}
+              />
+            </View>
+
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+              <Text style={styles.label}>Bitiş Tarihi</Text>
+              <TouchableOpacity 
+                onPress={() => setShowDatePicker(true)}
+                style={styles.datePickerButton}
+              >
+                <TextInput
+                  style={styles.input}
+                  value={formData.bitisTarihi}
+                  placeholder="GG/AA/YYYY"
+                  placeholderTextColor="#71727A"
+                  editable={false}
+                />
+                <Feather 
+                  name="calendar" 
+                  size={20} 
+                  color="#71727A" 
+                  style={styles.calendarIcon}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? 'Ekleniyor...' : 'Aboneliği Ekle'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={new Date()}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+      
+      <Toast />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#050511',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  title: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  platformLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+  },
+  form: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Medium',
+  },
+  input: {
+    backgroundColor: '#1A1A2E',
+    borderRadius: 12,
+    padding: 16,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 14,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  button: {
+    backgroundColor: '#4649E5',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
+  },
+  datePickerButton: {
+    position: 'relative',
+  },
+  calendarIcon: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+  }
+}); 

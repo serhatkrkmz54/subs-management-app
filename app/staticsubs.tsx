@@ -54,7 +54,6 @@ export default function StaticSubs() {
       'Spotify Premium': require('../assets/images/platform-logo/spotify-big-logo.png'),
       'Youtube Premium': require('../assets/images/platform-logo/youtube-big-logo.png'),
       'Amazon Prime': require('../assets/images/platform-logo/prime-big-logo.png'),
-
       'Disney+': require('../assets/images/platform-logo/disneyplus-big-logo.png'),
       'Apple Music': require('../assets/images/platform-logo/applemusic-big-logo.png'),
       'Tabii': require('../assets/images/platform-logo/tabii-big-logo.png'),
@@ -118,7 +117,23 @@ export default function StaticSubs() {
             {expandedPlatform === subscription.abonelikAdi && (
               <View style={styles.plansContainer}>
                 {subscription.paketler.map((plan) => (
-                  <TouchableOpacity key={plan.id} style={styles.planItem}>
+                  <TouchableOpacity 
+                    key={plan.id} 
+                    style={styles.planItem}
+                    onPress={() => {
+                      router.push({
+                        pathname: "/(tabs)/staticsubsadd",
+                        params: {
+                          id: plan.id,
+                          platformName: subscription.abonelikAdi,
+                          packageName: plan.paketAdi,
+                          amount: plan.sodemeMiktari,
+                          currency: plan.sodemeBirimi,
+                          frequency: plan.sfrequency
+                        }
+                      });
+                    }}
+                  >
                     <View>
                       <Text style={styles.planName}>{plan.paketAdi}</Text>
                       <Text style={styles.planFrequency}>
