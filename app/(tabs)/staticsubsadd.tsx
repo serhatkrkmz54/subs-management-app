@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, TextInput, ScrollView, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -12,28 +12,48 @@ export default function StaticSubsAdd() {
   const params = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
+  
+  const frequencyOptions = [
+    { label: 'Aylık', value: 'AYLIK' },
+    { label: 'Yıllık', value: 'YILLIK' }
+  ];
+
   const [formData, setFormData] = useState({
     platformName: params.platformName as string,
     packageName: params.packageName as string,
     amount: params.amount as string,
     currency: params.currency as string,
     frequency: params.frequency as string,
+    displayFrequency: frequencyOptions.find(opt => opt.value === params.frequency)?.label || '',
     cardName: '',
     last4Digits: '',
-    bitisTarihi: ''
+    bitisTarihi: '',
+    displayBitisTarihi: ''
   });
 
-  const formatDate = (date: Date) => {
+  const formatDateForDisplay = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
 
+  const formatDateForBackend = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      setFormData({ ...formData, bitisTarihi: formatDate(selectedDate) });
+      setFormData({
+        ...formData,
+        bitisTarihi: formatDateForBackend(selectedDate),
+        displayBitisTarihi: formatDateForDisplay(selectedDate)
+      });
     }
   };
 
@@ -181,22 +201,27 @@ export default function StaticSubsAdd() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Ödeme Sıklığı</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.frequency}
-              onChangeText={(text) => setFormData({ ...formData, frequency: text })}
-              placeholder="Ödeme sıklığını girin"
-              placeholderTextColor="#71727A"
-            />
+            <TouchableOpacity 
+              style={[styles.input, styles.selectInput]}
+              onPress={() => setShowFrequencyModal(true)}
+            >
+              <Text style={[
+                styles.selectText,
+                formData.displayFrequency ? styles.selectedText : styles.placeholderText
+              ]}>
+                {formData.displayFrequency || 'Ödeme sıklığını seçin'}
+              </Text>
+              <Feather name="chevron-down" size={20} color="#71727A" />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Kart Üzerindeki İsim</Text>
+            <Text style={styles.label}>Kartınızın İsmi (Kart üzerinden hatırlamak için)</Text>
             <TextInput
               style={styles.input}
               value={formData.cardName}
               onChangeText={(text) => setFormData({ ...formData, cardName: text })}
-              placeholder="Kart üzerindeki ismi girin"
+              placeholder="Kartınızın ismini girin"
               placeholderTextColor="#71727A"
             />
           </View>
@@ -216,15 +241,15 @@ export default function StaticSubsAdd() {
             </View>
 
             <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
-              <Text style={styles.label}>Bitiş Tarihi</Text>
+              <Text style={styles.label}>Abonelik Bitiş Tarihi</Text>
               <TouchableOpacity 
                 onPress={() => setShowDatePicker(true)}
                 style={styles.datePickerButton}
               >
                 <TextInput
                   style={styles.input}
-                  value={formData.bitisTarihi}
-                  placeholder="GG/AA/YYYY"
+                  value={formData.displayBitisTarihi}
+                  placeholder="GG-AA-YYYY"
                   placeholderTextColor="#71727A"
                   editable={false}
                 />
@@ -259,6 +284,51 @@ export default function StaticSubsAdd() {
           minimumDate={new Date()}
         />
       )}
+   
+      <Modal
+        visible={showFrequencyModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Ödeme Sıklığı Seçin</Text>
+              <TouchableOpacity 
+                onPress={() => setShowFrequencyModal(false)}
+                style={styles.closeButton}
+              >
+                <Feather name="x" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            
+            {frequencyOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={styles.optionItem}
+                onPress={() => {
+                  setFormData({
+                    ...formData,
+                    frequency: option.value,
+                    displayFrequency: option.label
+                  });
+                  setShowFrequencyModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.optionText,
+                  formData.frequency === option.value && styles.selectedOption
+                ]}>
+                  {option.label}
+                </Text>
+                {formData.frequency === option.value && (
+                  <Feather name="check" size={20} color="#4649E5" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
       
       <Toast />
     </View>
@@ -347,5 +417,63 @@ const styles = StyleSheet.create({
     right: 16,
     top: '50%',
     transform: [{ translateY: -10 }],
-  }
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1A1A2E',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(70, 73, 229, 0.2)',
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#FFFFFF',
+  },
+  selectedOption: {
+    color: '#4649E5',
+    fontFamily: 'Poppins-Medium',
+  },
+  selectText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+  },
+  selectedText: {
+    color: '#FFFFFF',
+  },
+  placeholderText: {
+    color: '#71727A',
+  },
+  selectInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
 }); 

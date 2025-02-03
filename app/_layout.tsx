@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import CustomSplashScreen from '../components/SplashScreen';
 import * as Font from 'expo-font';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
@@ -33,18 +34,22 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack 
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="register" />
-      <Stack.Screen name="verify" />
-      <Stack.Screen name="home" />
-      <Stack.Screen name="staticsubs" />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#050511' },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+        <Stack.Screen name="verify" />
+        <Stack.Screen name="home" />
+        <Stack.Screen name="staticsubs" />
+        <Stack.Screen name="subscriptioncreate" />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </GestureHandlerRootView>
   );
 } 
