@@ -48,3 +48,7 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+91f2d0ed-e33f-4ca8-9a7d-8b59a339bbac ------------- APP ID
+
+os_v2_app_shznb3pdh5gkrgt5rnm2gon3vqogk67gmfeerqfnsydmkw43ousue5tibgm5q2zv273pxzbjca5y66vvafdom2owvl5nmwc6lnbouei ------------ API KEYS

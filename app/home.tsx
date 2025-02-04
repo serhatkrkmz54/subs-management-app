@@ -41,6 +41,12 @@ export default function Home() {
   useEffect(() => {
     fetchProfileAndPlans();
     setGreeting(getGreeting());
+
+    // Her sayfa yüklendiğinde ve her 24 saatte bir kontrol et
+    deleteExpiredSubscriptions();
+    const interval = setInterval(deleteExpiredSubscriptions, 24 * 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const getGreeting = () => {
@@ -126,14 +132,16 @@ export default function Home() {
   };
 
   const calculateTotalPayment = (plans: PaymentPlan[]): { TRY: number; USD: number } => {
-    return plans.reduce((acc, plan) => {
-      if (plan.odemeBirimi === 'TRY') {
-        acc.TRY += plan.odemeMiktari;
-      } else if (plan.odemeBirimi === 'USD') {
-        acc.USD += plan.odemeMiktari;
-      }
-      return acc;
-    }, { TRY: 0, USD: 0 });
+    return plans
+      .filter(plan => !isExpired(plan.bitisTarihi)) // Süresi dolmamış ödemeleri filtrele
+      .reduce((acc, plan) => {
+        if (plan.odemeBirimi === 'TRY') {
+          acc.TRY += plan.odemeMiktari;
+        } else if (plan.odemeBirimi === 'USD') {
+          acc.USD += plan.odemeMiktari;
+        }
+        return acc;
+      }, { TRY: 0, USD: 0 });
   };
 
   const onRefresh = React.useCallback(async () => {
@@ -211,6 +219,48 @@ export default function Home() {
         <Feather name="trash-2" size={24} color="#FFFFFF" />
       </TouchableOpacity>
     );
+  };
+
+  const isExpired = (endDate: string | null): boolean => {
+    if (!endDate) return false;
+    const end = new Date(endDate);
+    const now = new Date();
+    const diffTime = now.getTime() - end.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0;
+  };
+
+  const deleteExpiredSubscriptions = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      const expiredPlans = paymentPlans.filter(plan => {
+        if (!plan.bitisTarihi) return false;
+        const end = new Date(plan.bitisTarihi);
+        const now = new Date();
+        const diffTime = now.getTime() - end.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 3;
+      });
+
+      for (const plan of expiredPlans) {
+        await axios.delete(`http://10.0.2.2:8080/payment-plan/delete/${plan.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+      }
+
+      if (expiredPlans.length > 0) {
+        await fetchProfileAndPlans();
+      }
+    } catch (error) {
+      console.error('Süresi dolan abonelikleri silme hatası:', error);
+    }
   };
 
   if (!profile) {
@@ -324,7 +374,8 @@ export default function Home() {
               </ImageBackground>
             </View>
 
-            {paymentPlans.some(plan => isNearExpiry(plan.bitisTarihi)) && (
+            {/* Yaklaşan Ödemeler - En Üstte */}
+            {filteredPaymentPlans.some(plan => isNearExpiry(plan.bitisTarihi)) && (
               <View style={styles.expiringSection}>
                 <Text style={styles.sectionTitle}>Yaklaşan Ödemeler</Text>
                 {filteredPaymentPlans
@@ -334,7 +385,7 @@ export default function Home() {
                     const daysB = getRemainingDays(b.bitisTarihi);
                     return daysA - daysB;
                   })
-                  .map((plan, index) => (
+                  .map((plan) => (
                     <Swipeable
                       key={plan.id}
                       renderRightActions={() => renderRightActions(plan.id)}
@@ -414,16 +465,17 @@ export default function Home() {
               </View>
             )}
             
+            {/* Aktif Abonelikler - Ortada */}
             <View style={styles.regularSection}>
-              <Text style={styles.sectionTitle}>Tüm Abonelikler</Text>
+              <Text style={styles.sectionTitle}>Aktif Abonelikler</Text>
               {filteredPaymentPlans
-                .filter(plan => !isNearExpiry(plan.bitisTarihi))
+                .filter(plan => !isExpired(plan.bitisTarihi) && !isNearExpiry(plan.bitisTarihi))
                 .sort((a, b) => {
                   if (!a.bitisTarihi) return 1;
                   if (!b.bitisTarihi) return -1;
                   return new Date(a.bitisTarihi).getTime() - new Date(b.bitisTarihi).getTime();
                 })
-                .map((plan, index) => (
+                .map((plan) => (
                   <Swipeable
                     key={plan.id}
                     renderRightActions={() => renderRightActions(plan.id)}
@@ -501,6 +553,64 @@ export default function Home() {
                   </Swipeable>
                 ))}
             </View>
+
+            {/* Süresi Dolan Abonelikler - En Altta */}
+            {filteredPaymentPlans.some(plan => isExpired(plan.bitisTarihi)) && (
+              <View style={styles.expiredSection}>
+                <Text style={styles.sectionTitle}>Süresi Dolan Abonelikler</Text>
+                {filteredPaymentPlans
+                  .filter(plan => isExpired(plan.bitisTarihi))
+                  .map((plan) => (
+                    <View key={plan.id} style={[styles.planItem, styles.expiredPlanItem]}>
+                      <View style={styles.planHeader}>
+                        <Image 
+                          source={getLogoPath(plan.abonelikAdi)} 
+                          style={styles.planLogo}
+                        />
+                        <View style={styles.planInfo}>
+                          <Text style={styles.platformName}>{plan.abonelikAdi}</Text>
+                          <Text style={styles.packageName}>{plan.frequency.toLowerCase()} ödeme</Text>
+                        </View>
+                        <View style={[styles.priceContainer, styles.expiredPriceContainer]}>
+                          <Text style={[styles.amount, styles.expiredAmount]}>
+                            {plan.odemeMiktari} {getCurrencySymbol(plan.odemeBirimi)}
+                          </Text>
+                        </View>
+                      </View>
+                      {(plan.cardName || plan.last4Digits || plan.bitisTarihi || plan.baslangicTarihi) && (
+                        <View style={styles.planDetails}>
+                          {plan.cardName && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Kart İsmi:</Text>
+                              <Text style={styles.detailValue}>{plan.cardName}</Text>
+                            </View>
+                          )}
+                          {plan.last4Digits && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Son 4 Hane:</Text>
+                              <Text style={styles.detailValue}>{plan.last4Digits}</Text>
+                            </View>
+                          )}
+                          {plan.baslangicTarihi && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Başlangıç Tarihi:</Text>
+                              <Text style={styles.detailValue}>{plan.baslangicTarihi}</Text>
+                            </View>
+                          )}
+                          {plan.bitisTarihi && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Bitiş Tarihi:</Text>
+                              <Text style={[styles.detailValue, styles.expiredDate]}>
+                                {plan.bitisTarihi}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  ))}
+              </View>
+            )}
           </ScrollView>
         )}
 
@@ -901,5 +1011,25 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 16,
     marginBottom: 16,
+  },
+  expiredSection: {
+    marginTop: 24,
+    marginBottom: 24,
+    width: '100%',
+  },
+  expiredPlanItem: {
+    borderWidth: 1,
+    borderColor: 'rgba(255, 68, 68, 0.3)',
+    backgroundColor: 'rgba(26, 26, 46, 0.8)',
+  },
+  expiredPriceContainer: {
+    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+  },
+  expiredAmount: {
+    color: '#FF4444',
+  },
+  expiredDate: {
+    color: '#FF4444',
+    fontFamily: 'Poppins-SemiBold',
   },
 }); 
