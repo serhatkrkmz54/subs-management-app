@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface UserProfile {
   userId: number;
@@ -28,6 +29,18 @@ interface PaymentPlan {
   userId: number;
 }
 
+interface EditedPlan {
+  id: number;
+  abonelikAdi: string;
+  odemeMiktari: number;
+  odemeBirimi: string;
+  baslangicTarihi: string;
+  bitisTarihi: string | null;
+  frequency: string;
+  last4Digits: string | null;
+  cardName: string | null;
+}
+
 export default function Home() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -37,14 +50,16 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<EditedPlan | null>(null);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   useEffect(() => {
     fetchProfileAndPlans();
     setGreeting(getGreeting());
-
-    // Her sayfa yüklendiğinde ve her 24 saatte bir kontrol et
-    deleteExpiredSubscriptions();
-    const interval = setInterval(deleteExpiredSubscriptions, 24 * 60 * 60 * 1000);
+    checkExpiredSubscriptions();
+    const interval = setInterval(checkExpiredSubscriptions, 24 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -107,8 +122,12 @@ export default function Home() {
     if (!endDate) return false;
     const end = new Date(endDate);
     const now = new Date();
-    const diffTime = end.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+    const nowUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffTime = endUTC - nowUTC;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 5 && diffDays > 0;
   };
 
@@ -116,8 +135,12 @@ export default function Home() {
     if (!endDate) return 0;
     const end = new Date(endDate);
     const now = new Date();
-    const diffTime = end.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+    const nowUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffTime = endUTC - nowUTC;
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
   const getCurrencySymbol = (currency: string): string => {
@@ -133,7 +156,7 @@ export default function Home() {
 
   const calculateTotalPayment = (plans: PaymentPlan[]): { TRY: number; USD: number } => {
     return plans
-      .filter(plan => !isExpired(plan.bitisTarihi)) // Süresi dolmamış ödemeleri filtrele
+      .filter(plan => !isExpired(plan.bitisTarihi))
       .reduce((acc, plan) => {
         if (plan.odemeBirimi === 'TRY') {
           acc.TRY += plan.odemeMiktari;
@@ -210,11 +233,35 @@ export default function Home() {
     );
   };
 
-  const renderRightActions = (planId: number) => {
+  const renderRightActions = (plan: PaymentPlan) => {
     return (
-      <TouchableOpacity
+      <TouchableOpacity 
+        style={styles.editAction}
+        onPress={() => router.push({
+          pathname: '/editsubscription',
+          params: {
+            id: plan.id,
+            abonelikAdi: plan.abonelikAdi,
+            odemeMiktari: plan.odemeMiktari,
+            odemeBirimi: plan.odemeBirimi,
+            baslangicTarihi: plan.baslangicTarihi,
+            bitisTarihi: plan.bitisTarihi,
+            frequency: plan.frequency,
+            last4Digits: plan.last4Digits || '',
+            cardName: plan.cardName || ''
+          }
+        })}
+      >
+        <Feather name="edit-2" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+    );
+  };
+
+  const renderLeftActions = (plan: PaymentPlan) => {
+    return (
+      <TouchableOpacity 
         style={styles.deleteAction}
-        onPress={() => handleDelete(planId)}
+        onPress={() => handleDelete(plan.id)}
       >
         <Feather name="trash-2" size={24} color="#FFFFFF" />
       </TouchableOpacity>
@@ -225,12 +272,15 @@ export default function Home() {
     if (!endDate) return false;
     const end = new Date(endDate);
     const now = new Date();
-    const diffTime = now.getTime() - end.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0;
+    
+    const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+    const nowUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffTime = nowUTC - endUTC;
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) > 0;
   };
 
-  const deleteExpiredSubscriptions = async () => {
+  const checkExpiredSubscriptions = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
@@ -240,28 +290,164 @@ export default function Home() {
 
       const expiredPlans = paymentPlans.filter(plan => {
         if (!plan.bitisTarihi) return false;
-        const end = new Date(plan.bitisTarihi);
+        const endDate = new Date(plan.bitisTarihi);
         const now = new Date();
-        const diffTime = now.getTime() - end.getTime();
+        const diffTime = now.getTime() - endDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays > 3;
       });
 
-      for (const plan of expiredPlans) {
-        await axios.delete(`http://10.0.2.2:8080/payment-plan/delete/${plan.id}`, {
+      if (expiredPlans.length > 0) {
+        for (const plan of expiredPlans) {
+          await axios.delete(`http://10.0.2.2:8080/payment-plan/delete/${plan.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+        }
+
+        fetchProfileAndPlans();
+
+        Toast.show({
+          type: 'info',
+          text1: 'Bilgi',
+          text2: `${expiredPlans.length} adet süresi dolan abonelik silindi`,
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Süresi dolan abonelikler silinirken bir hata oluştu',
+        position: 'top',
+      });
+    }
+  };
+
+  const handleEdit = (plan: PaymentPlan) => {
+    console.log('Düzenleme başlatılıyor:', { plan });
+    const editedPlan: EditedPlan = {
+      id: plan.id,
+      abonelikAdi: plan.abonelikAdi,
+      odemeMiktari: plan.odemeMiktari,
+      odemeBirimi: plan.odemeBirimi,
+      baslangicTarihi: plan.baslangicTarihi,
+      bitisTarihi: plan.bitisTarihi,
+      frequency: plan.frequency,
+      last4Digits: plan.last4Digits || '',
+      cardName: plan.cardName || ''
+    };
+    setSelectedPlan(editedPlan);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedPlan) return;
+
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      const response = await axios.put(
+        `http://10.0.2.2:8080/payment-plan/duzenle/${selectedPlan.id}`,
+        {
+          abonelikAdi: selectedPlan.abonelikAdi,
+          odemeMiktari: selectedPlan.odemeMiktari,
+          odemeBirimi: selectedPlan.odemeBirimi,
+          baslangicTarihi: selectedPlan.baslangicTarihi,
+          bitisTarihi: selectedPlan.bitisTarihi,
+          frequency: selectedPlan.frequency,
+          last4Digits: selectedPlan.last4Digits,
+          cardName: selectedPlan.cardName
+        },
+        {
           headers: {
             Authorization: `Bearer ${token}`
           }
-        });
-      }
+        }
+      );
 
-      if (expiredPlans.length > 0) {
-        await fetchProfileAndPlans();
+      if (response.status === 200) {
+        Toast.show({
+          type: 'success',
+          text1: 'Başarılı',
+          text2: 'Abonelik başarıyla güncellendi',
+          visibilityTime: 2000,
+        });
+
+        setShowEditModal(false);
+        setSelectedPlan(null);
+        fetchProfileAndPlans();
       }
     } catch (error) {
-      console.error('Süresi dolan abonelikleri silme hatası:', error);
+      console.error('Düzenleme hatası:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Abonelik güncellenirken bir hata oluştu',
+        visibilityTime: 2000,
+      });
     }
   };
+
+  const formatDateForDisplay = (date: string) => {
+    const [year, month, day] = date.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatDateForBackend = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowStartDatePicker(false);
+    if (selectedDate && selectedPlan) {
+      setSelectedPlan({
+        ...selectedPlan,
+        baslangicTarihi: formatDateForBackend(selectedDate)
+      });
+    }
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(false);
+    if (selectedDate && selectedPlan) {
+      setSelectedPlan({
+        ...selectedPlan,
+        bitisTarihi: formatDateForBackend(selectedDate)
+      });
+    }
+  };
+
+  const renderEditButton = (plan: PaymentPlan) => (
+    <TouchableOpacity
+      style={styles.editButton}
+      onPress={() => router.push({
+        pathname: '/editsubscription',
+        params: {
+          id: plan.id,
+          abonelikAdi: plan.abonelikAdi,
+          odemeMiktari: plan.odemeMiktari,
+          odemeBirimi: plan.odemeBirimi,
+          baslangicTarihi: plan.baslangicTarihi,
+          bitisTarihi: plan.bitisTarihi,
+          frequency: plan.frequency,
+          last4Digits: plan.last4Digits || '',
+          cardName: plan.cardName || ''
+        }
+      })}
+    >
+      <Feather name="edit-2" size={20} color="#4649E5" />
+    </TouchableOpacity>
+  );
 
   if (!profile) {
     return (
@@ -388,7 +574,8 @@ export default function Home() {
                   .map((plan) => (
                     <Swipeable
                       key={plan.id}
-                      renderRightActions={() => renderRightActions(plan.id)}
+                      renderRightActions={() => renderRightActions(plan)}
+                      renderLeftActions={() => renderLeftActions(plan)}
                       overshootRight={false}
                     >
                       <View style={[styles.planItem, styles.expiringPlanItem]}>
@@ -401,10 +588,13 @@ export default function Home() {
                             <Text style={styles.platformName}>{plan.abonelikAdi}</Text>
                             <Text style={styles.packageName}>{plan.frequency.toLowerCase()} ödeme</Text>
                           </View>
-                          <View style={styles.priceContainer}>
-                            <Text style={styles.amount}>
-                              {plan.odemeMiktari} {getCurrencySymbol(plan.odemeBirimi)}
-                            </Text>
+                          <View style={styles.headerButtons}>
+                            {renderEditButton(plan)}
+                            <View style={styles.priceContainer}>
+                              <Text style={styles.amount}>
+                                {plan.odemeMiktari} {getCurrencySymbol(plan.odemeBirimi)}
+                              </Text>
+                            </View>
                           </View>
                         </View>
                         {(plan.cardName || plan.last4Digits || plan.bitisTarihi || plan.baslangicTarihi) && (
@@ -478,7 +668,8 @@ export default function Home() {
                 .map((plan) => (
                   <Swipeable
                     key={plan.id}
-                    renderRightActions={() => renderRightActions(plan.id)}
+                    renderRightActions={() => renderRightActions(plan)}
+                    renderLeftActions={() => renderLeftActions(plan)}
                     overshootRight={false}
                   >
                     <View style={styles.planItem}>
@@ -491,10 +682,13 @@ export default function Home() {
                           <Text style={styles.platformName}>{plan.abonelikAdi}</Text>
                           <Text style={styles.packageName}>{plan.frequency.toLowerCase()} ödeme</Text>
                         </View>
-                        <View style={styles.priceContainer}>
-                          <Text style={styles.amount}>
-                            {plan.odemeMiktari} {getCurrencySymbol(plan.odemeBirimi)}
-                          </Text>
+                        <View style={styles.headerButtons}>
+                          {renderEditButton(plan)}
+                          <View style={styles.priceContainer}>
+                            <Text style={styles.amount}>
+                              {plan.odemeMiktari} {getCurrencySymbol(plan.odemeBirimi)}
+                            </Text>
+                          </View>
                         </View>
                       </View>
                       {(plan.cardName || plan.last4Digits || plan.bitisTarihi || plan.baslangicTarihi) && (
@@ -558,6 +752,9 @@ export default function Home() {
             {filteredPaymentPlans.some(plan => isExpired(plan.bitisTarihi)) && (
               <View style={styles.expiredSection}>
                 <Text style={styles.sectionTitle}>Süresi Dolan Abonelikler</Text>
+                <Text style={styles.expiredWarning}>
+                  Not: Süresi dolan abonelikler 3 gün sonra otomatik olarak silinecektir.
+                </Text>
                 {filteredPaymentPlans
                   .filter(plan => isExpired(plan.bitisTarihi))
                   .map((plan) => (
@@ -651,11 +848,210 @@ export default function Home() {
             <Feather name={showOptions ? "x" : "plus"} size={32} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.bottomBarItem}>
+          <TouchableOpacity 
+            style={styles.bottomBarItem}
+            onPress={() => router.push('/settings')}
+          >
             <Feather name="settings" size={24} color="#71727A" />
           </TouchableOpacity>
         </View>
       </View>
+
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowEditModal(false);
+          setSelectedPlan(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Abonelik Düzenle</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowEditModal(false);
+                  setSelectedPlan(null);
+                }}
+                style={styles.closeButton}
+              >
+                <Feather name="x" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
+              {selectedPlan && (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Abonelik Adı</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={selectedPlan.abonelikAdi}
+                      onChangeText={(text) => setSelectedPlan({...selectedPlan, abonelikAdi: text})}
+                      placeholder="Abonelik adını girin"
+                      placeholderTextColor="#71727A"
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.label}>Ödeme Miktarı</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={selectedPlan.odemeMiktari.toString()}
+                        onChangeText={(text) => setSelectedPlan({...selectedPlan, odemeMiktari: Number(text) || 0})}
+                        placeholder="Miktar"
+                        placeholderTextColor="#71727A"
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.label}>Ödeme Birimi</Text>
+                      <View style={styles.radioGroup}>
+                        <TouchableOpacity 
+                          style={[
+                            styles.radioButton,
+                            selectedPlan.odemeBirimi === 'TRY' && styles.radioButtonSelected
+                          ]}
+                          onPress={() => setSelectedPlan({...selectedPlan, odemeBirimi: 'TRY'})}
+                        >
+                          <Text style={[
+                            styles.radioText,
+                            selectedPlan.odemeBirimi === 'TRY' && styles.radioTextSelected
+                          ]}>TRY</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[
+                            styles.radioButton,
+                            selectedPlan.odemeBirimi === 'USD' && styles.radioButtonSelected
+                          ]}
+                          onPress={() => setSelectedPlan({...selectedPlan, odemeBirimi: 'USD'})}
+                        >
+                          <Text style={[
+                            styles.radioText,
+                            selectedPlan.odemeBirimi === 'USD' && styles.radioTextSelected
+                          ]}>USD</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Ödeme Sıklığı</Text>
+                    <View style={styles.radioGroup}>
+                      <TouchableOpacity 
+                        style={[
+                          styles.radioButton,
+                          selectedPlan.frequency === 'AYLIK' && styles.radioButtonSelected
+                        ]}
+                        onPress={() => setSelectedPlan({...selectedPlan, frequency: 'AYLIK'})}
+                      >
+                        <Text style={[
+                          styles.radioText,
+                          selectedPlan.frequency === 'AYLIK' && styles.radioTextSelected
+                        ]}>Aylık</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[
+                          styles.radioButton,
+                          selectedPlan.frequency === 'YILLIK' && styles.radioButtonSelected
+                        ]}
+                        onPress={() => setSelectedPlan({...selectedPlan, frequency: 'YILLIK'})}
+                      >
+                        <Text style={[
+                          styles.radioText,
+                          selectedPlan.frequency === 'YILLIK' && styles.radioTextSelected
+                        ]}>Yıllık</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Kart İsmi</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={selectedPlan.cardName || ''}
+                      onChangeText={(text) => setSelectedPlan({...selectedPlan, cardName: text})}
+                      placeholder="Kart ismini girin"
+                      placeholderTextColor="#71727A"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Son 4 Hane</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={selectedPlan.last4Digits || ''}
+                      onChangeText={(text) => setSelectedPlan({...selectedPlan, last4Digits: text})}
+                      placeholder="Son 4 haneyi girin"
+                      placeholderTextColor="#71727A"
+                      keyboardType="numeric"
+                      maxLength={4}
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.label}>Başlangıç Tarihi</Text>
+                      <TouchableOpacity 
+                        style={styles.dateInput}
+                        onPress={() => setShowStartDatePicker(true)}
+                      >
+                        <Text style={styles.dateText}>
+                          {selectedPlan.baslangicTarihi ? formatDateForDisplay(selectedPlan.baslangicTarihi) : 'Seçin'}
+                        </Text>
+                        <Feather name="calendar" size={20} color="#71727A" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.label}>Bitiş Tarihi</Text>
+                      <TouchableOpacity 
+                        style={styles.dateInput}
+                        onPress={() => setShowEndDatePicker(true)}
+                      >
+                        <Text style={styles.dateText}>
+                          {selectedPlan.bitisTarihi ? formatDateForDisplay(selectedPlan.bitisTarihi) : 'Seçin'}
+                        </Text>
+                        <Feather name="calendar" size={20} color="#71727A" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={styles.saveButton}
+                    onPress={handleSaveEdit}
+                  >
+                    <Text style={styles.saveButtonText}>Kaydet</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {showStartDatePicker && (
+        <DateTimePicker
+          value={selectedPlan?.baslangicTarihi ? new Date(selectedPlan.baslangicTarihi) : new Date()}
+          mode="date"
+          display="default"
+          onChange={handleStartDateChange}
+        />
+      )}
+
+      {showEndDatePicker && (
+        <DateTimePicker
+          value={selectedPlan?.bitisTarihi ? new Date(selectedPlan.bitisTarihi) : new Date()}
+          mode="date"
+          display="default"
+          onChange={handleEndDateChange}
+          minimumDate={selectedPlan?.baslangicTarihi ? new Date(selectedPlan.baslangicTarihi) : new Date()}
+        />
+      )}
     </View>
   );
 }
@@ -919,7 +1315,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFFFFF',
     fontFamily: 'Poppins-SemiBold',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   expiringPlanItem: {
     borderWidth: 1,
@@ -1008,7 +1404,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    height: '100%',
+    height: '94%',
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  editAction: {
+    backgroundColor: '#4649E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '94%',
     borderRadius: 16,
     marginBottom: 16,
   },
@@ -1031,5 +1436,157 @@ const styles = StyleSheet.create({
   expiredDate: {
     color: '#FF4444',
     fontFamily: 'Poppins-SemiBold',
+  },
+  expiredWarning: {
+    color: '#FF4444',
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#1A1A2E',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxHeight: '90%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(70, 73, 229, 0.2)',
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  modalForm: {
+    flex: 1,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    color: '#9799FF',
+    fontFamily: 'Poppins-Medium',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#050511',
+    borderRadius: 12,
+    padding: 16,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 73, 229, 0.2)',
+    minHeight: 48,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  radioGroup: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  radioButton: {
+    flex: 1,
+    backgroundColor: '#050511',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(70, 73, 229, 0.2)',
+    minHeight: 48,
+  },
+  radioButtonSelected: {
+    backgroundColor: '#4649E5',
+    borderColor: '#4649E5',
+  },
+  radioText: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 14,
+  },
+  radioTextSelected: {
+    fontFamily: 'Poppins-SemiBold',
+  },
+  dateInput: {
+    backgroundColor: '#050511',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 73, 229, 0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+  },
+  dateText: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 14,
+  },
+  saveButton: {
+    backgroundColor: '#4649E5',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    padding: 8,
+    backgroundColor: 'rgba(70, 73, 229, 0.1)',
+    borderRadius: 8,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#FF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
 }); 

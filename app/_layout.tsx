@@ -46,8 +46,10 @@ export default function RootLayout() {
         <Stack.Screen name="register" />
         <Stack.Screen name="verify" />
         <Stack.Screen name="home" />
+        <Stack.Screen name="settings" />
         <Stack.Screen name="staticsubs" />
         <Stack.Screen name="subscriptioncreate" />
+        <Stack.Screen name="editsubscription" />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
