@@ -1,8 +1,14 @@
 import { View, Text, StyleSheet, ImageBackground, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LogLevel, OneSignal } from 'react-native-onesignal';
+import Constants from "expo-constants";
 
 export default function Welcome() {
   const router = useRouter();
+  OneSignal.Debug.setLogLevel(LogLevel.Debug);
+  OneSignal.initialize(Constants.expoConfig?.extra?.oneSignalAppId);
+
+  OneSignal.Notifications.requestPermission(true);
 
   return (
     <View style={styles.container}>

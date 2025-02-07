@@ -14,6 +14,7 @@ import BackButton from '../components/BackButton';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LogLevel, OneSignal } from 'react-native-onesignal';
 
 export default function Login() {
   const router = useRouter();
@@ -22,11 +23,22 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEmailValid, setIsEmailValid] = useState<boolean | null>(null);
-
+  const [playerId, setPlayerId] = useState('');
+  
   const validateEmail = (text: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(text);
   };
+
+  OneSignal.User.getOnesignalId().then(onesignalId => {
+    if (onesignalId) {
+      setPlayerId(onesignalId);
+    } else {
+        console.log("OneSignal ID alınamadı.");
+    }
+    }).catch(error => {
+    console.error("OneSignal ID alınırken hata oluştu:", error);
+    });
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -58,9 +70,10 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const response = await axios.post('http://10.0.2.2:8080/auth/authenticate', {
+      const response = await axios.post('http://10.121.242.101:8080/auth/authenticate', {
         email,
-        password
+        password,
+        playerId
       });
 
       await AsyncStorage.setItem('userToken', response.data.token);
@@ -76,6 +89,7 @@ export default function Login() {
 
     } catch (error: any) {
       let errorMessage = 'Giriş yapılamadı.';
+      console.log(error);
       
       if (error.response?.data?.message === 'Bad credentials') {
         errorMessage = 'E-posta adresi veya şifre hatalı.';
