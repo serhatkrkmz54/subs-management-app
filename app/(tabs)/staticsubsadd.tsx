@@ -157,7 +157,7 @@ export default function StaticSubsAdd() {
             <TextInput
               style={styles.input}
               value={formData.platformName}
-              onChangeText={(text) => setFormData({ ...formData, platformName: text })}
+              onChangeText={(text: string) => setFormData({ ...formData, platformName: text })}
               placeholder="Abonelik adını girin"
               placeholderTextColor="#71727A"
             />
@@ -168,7 +168,7 @@ export default function StaticSubsAdd() {
             <TextInput
               style={styles.input}
               value={formData.packageName}
-              onChangeText={(text) => setFormData({ ...formData, packageName: text })}
+              onChangeText={(text: string) => setFormData({ ...formData, packageName: text })}
               placeholder="Paket adını girin"
               placeholderTextColor="#71727A"
             />
@@ -180,7 +180,7 @@ export default function StaticSubsAdd() {
               <TextInput
                 style={styles.input}
                 value={formData.amount}
-                onChangeText={(text) => setFormData({ ...formData, amount: text })}
+                onChangeText={(text: string) => setFormData({ ...formData, amount: text })}
                 placeholder="Miktar"
                 placeholderTextColor="#71727A"
                 keyboardType="numeric"
@@ -192,7 +192,7 @@ export default function StaticSubsAdd() {
               <TextInput
                 style={styles.input}
                 value={formData.currency}
-                onChangeText={(text) => setFormData({ ...formData, currency: text })}
+                onChangeText={(text: string) => setFormData({ ...formData, currency: text })}
                 placeholder="Birim"
                 placeholderTextColor="#71727A"
               />
@@ -220,7 +220,7 @@ export default function StaticSubsAdd() {
             <TextInput
               style={styles.input}
               value={formData.cardName}
-              onChangeText={(text) => setFormData({ ...formData, cardName: text })}
+              onChangeText={(text: string) => setFormData({ ...formData, cardName: text })}
               placeholder="Kartınızın ismini girin"
               placeholderTextColor="#71727A"
             />
@@ -232,7 +232,7 @@ export default function StaticSubsAdd() {
               <TextInput
                 style={styles.input}
                 value={formData.last4Digits}
-                onChangeText={(text) => setFormData({ ...formData, last4Digits: text.replace(/[^0-9]/g, '').slice(0, 4) })}
+                onChangeText={(text: string) => setFormData({ ...formData, last4Digits: text.replace(/[^0-9]/g, '').slice(0, 4) })}
                 placeholder="****"
                 placeholderTextColor="#71727A"
                 keyboardType="numeric"
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingHorizontal: 24,
     paddingBottom: 20,
   },

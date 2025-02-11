@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { API_URL } from './constants';
 
 export default function EditSubscription() {
   const router = useRouter();
@@ -82,7 +83,7 @@ export default function EditSubscription() {
       }
 
       const response = await axios.put(
-        `http://10.0.2.2:8080/payment-plan/duzenle/${formData.id}`,
+        `${API_URL}/payment-plan/duzenle/${formData.id}`,
         {
           abonelikAdi: formData.abonelikAdi,
           odemeMiktari: Number(formData.odemeMiktari),
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingHorizontal: 24,
     paddingBottom: 20,
   },

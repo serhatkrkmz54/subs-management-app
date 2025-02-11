@@ -14,7 +14,9 @@ import BackButton from '../components/BackButton';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LogLevel, OneSignal } from 'react-native-onesignal';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { API_URL } from './constants';
 
 export default function Login() {
   const router = useRouter();
@@ -23,22 +25,47 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEmailValid, setIsEmailValid] = useState<boolean | null>(null);
-  const [playerId, setPlayerId] = useState('');
+
+
+  async function getExpoPushToken() {
+  let token = null;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    console.log('Bildirim izni verilmedi!');
+    return null;
+  }
+
+  if (Device.isDevice) {
+    const { data } = await Notifications.getExpoPushTokenAsync();
+    token = data;
+  } else {
+    console.log('Fiziksel bir cihazda çalıştırmalısın!');
+  }
+
+  return token;
+}
   
   const validateEmail = (text: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(text);
   };
-
-  OneSignal.User.getOnesignalId().then(onesignalId => {
-    if (onesignalId) {
-      setPlayerId(onesignalId);
-    } else {
-        console.log("OneSignal ID alınamadı.");
-    }
-    }).catch(error => {
-    console.error("OneSignal ID alınırken hata oluştu:", error);
-    });
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -70,13 +97,18 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const response = await axios.post('http://10.121.242.101:8080/auth/authenticate', {
+
+      const expoPushToken = await getExpoPushToken();
+
+      const response = await axios.post(`${API_URL}/auth/authenticate`, {
         email,
         password,
-        playerId
+        expoPushToken,
       });
 
       await AsyncStorage.setItem('userToken', response.data.token);
+      console.log(expoPushToken);
+      
       Toast.show({
         type: 'success',
         text1: 'Başarılı',

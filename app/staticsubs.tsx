@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
+import { API_URL } from './constants';
 
 interface Package {
   id: number;
@@ -36,7 +37,7 @@ export default function StaticSubs() {
         return;
       }
 
-      const response = await axios.get('http://10.0.2.2:8080/payment-plan/static-subscriptions', {
+      const response = await axios.get(`${API_URL}/payment-plan/static-subscriptions`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingHorizontal: 24,
     paddingBottom: 20,
   },

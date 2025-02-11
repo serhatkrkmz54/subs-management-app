@@ -7,6 +7,7 @@ import BackButton from '../components/BackButton';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from './constants';
 
 export default function Register() {
   const router = useRouter();
@@ -87,7 +88,7 @@ export default function Register() {
 
     try {
       setLoading(true);
-      const response = await axios.post('http://10.0.2.2:8080/auth/register', {
+      const response = await axios.post(`${API_URL}/auth/register`, {
         fullName: name,
         email,
         phoneNumber: phone.replace(/-/g, ''),

@@ -7,6 +7,16 @@
     "icon": "./assets/images/icon.png",
     "newArchEnabled": true,
     "userInterfaceStyle": "light",
+    "androidStatusBar": {
+      "backgroundColor": "transparent",
+      "translucent": true,
+      "barStyle": "light-content",
+      "hidden": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#050511",
+      "barStyle": "light-content"
+    },
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -17,28 +27,42 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.subsmanagement.app"
+      "bundleIdentifier": "com.subsmanagement.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#050511"
       },
-      "package": "com.subsmanagement.app"
+      "package": "com.subsmanagement.app",
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [
-        "onesignal-expo-plugin",
+        "expo-notifications",
         {
-          "mode": "development"
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
+          "androidMode": "default",
+          "androidCollapsedTitle": "SubsManager",
+          "iosDisplayInForeground": true,
+          "sounds": [
+            "./assets/notification_sound.wav"
+          ]
         }
       ]
     ],
     "extra": {
-      "oneSignalAppId": "ee503461-204c-48c7-9cef-6260c5a847dd"
+      "eas": {
+        "projectId": "3cb6123a-37dc-43ce-a6df-4b704334c174"
+      }
     }
   }
 }

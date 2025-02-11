@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, Animated, Easing, ScrollView, Modal, LayoutRectangle, ImageBackground, RefreshControl, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { API_URL } from './constants';
 
 
 interface UserProfile {
@@ -80,7 +81,7 @@ export default function Home() {
         return;
       }
 
-      const profileResponse = await axios.get('http://10.0.2.2:8080/auth/profil', {
+      const profileResponse = await axios.get(`${API_URL}/auth/profil`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -89,7 +90,7 @@ export default function Home() {
       setProfile(profileResponse.data);
 
       if (profileResponse.data?.userId) {
-        const plansResponse = await axios.get(`http://10.0.2.2:8080/payment-plan/all-plan/${profileResponse.data.userId}`, {
+        const plansResponse = await axios.get(`${API_URL}/payment-plan/all-plan/${profileResponse.data.userId}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -97,7 +98,7 @@ export default function Home() {
         setPaymentPlans(plansResponse.data || []);
       }
     } catch (error) {
-      console.error('Veri yükleme hatası:', error);
+      console.error('Profil yükleme hatası:', error);
       if (axios.isAxiosError(error)) {
         console.log('Hata detayı:', error.response?.data);
       }
@@ -168,7 +169,7 @@ export default function Home() {
       }, { TRY: 0, USD: 0 });
   };
 
-  const onRefresh = React.useCallback(async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await fetchProfileAndPlans();
@@ -204,7 +205,7 @@ export default function Home() {
                 return;
               }
 
-              const response = await axios.delete(`http://10.0.2.2:8080/payment-plan/delete/${planId}`, {
+              const response = await axios.delete(`${API_URL}/payment-plan/delete/${planId}`, {
                 headers: {
                   Authorization: `Bearer ${token}`
                 }
@@ -300,7 +301,7 @@ export default function Home() {
 
       if (expiredPlans.length > 0) {
         for (const plan of expiredPlans) {
-          await axios.delete(`http://10.0.2.2:8080/payment-plan/delete/${plan.id}`, {
+          await axios.delete(`${API_URL}/payment-plan/delete/${plan.id}`, {
             headers: {
               Authorization: `Bearer ${token}`
             }
@@ -355,7 +356,7 @@ export default function Home() {
       }
 
       const response = await axios.put(
-        `http://10.0.2.2:8080/payment-plan/duzenle/${selectedPlan.id}`,
+        `${API_URL}/payment-plan/duzenle/${selectedPlan.id}`,
         {
           abonelikAdi: selectedPlan.abonelikAdi,
           odemeMiktari: selectedPlan.odemeMiktari,
@@ -453,7 +454,7 @@ export default function Home() {
   if (!profile) {
     return (
       <View style={styles.container}>
-        <Text style={styles.loadingText}>Yükleniyor...</Text>
+        <Text>Yükleniyor...</Text>
       </View>
     );
   }
@@ -462,14 +463,16 @@ export default function Home() {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <View style={styles.profileSection}>
+          <View style={styles.profileContainer}>
             <Image 
               source={require('../assets/images/default-user.jpg')}
               style={styles.profileImage}
             />
             <View style={styles.greetingContainer}>
-              <Text style={styles.greeting}>{greeting},</Text>
-              <Text style={styles.name}> {profile.fullName.split(' ')[0]}</Text>
+              <View style={styles.greetingRow}>
+                <Text style={styles.greeting}>{getGreeting()}</Text>
+                <Text style={styles.name}>{profile?.fullName}</Text>
+              </View>
             </View>
             <TouchableOpacity 
               style={styles.searchButton}
@@ -1067,41 +1070,56 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   header: {
-    marginBottom: 24,
     paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 24,
+    backgroundColor: '#050511',
   },
-  profileSection: {
+  profileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 5,
   },
   profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#4649E5',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   greetingContainer: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   greeting: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#9799FF',
     fontFamily: 'Poppins-Regular',
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
     fontFamily: 'Poppins-SemiBold',
   },
-  loadingText: {
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A2E',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+    marginBottom: 24,
+    marginTop: 15
+  },
+  searchInput: {
+    flex: 1,
     color: '#FFFFFF',
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 24,
+    marginLeft: 12,
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
   },
   emptyState: {
@@ -1376,11 +1394,6 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
     padding: 8,
   },
-  searchContainer: {
-    marginTop: 25,
-    marginBottom: 5,
-    width: '100%',
-  },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1388,13 +1401,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(70, 73, 229, 0.2)',
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-    color: '#FFFFFF',
-    fontFamily: 'Poppins-Regular',
-    fontSize: 14,
   },
   clearButton: {
     padding: 8,

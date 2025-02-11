@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import { API_URL } from './constants';
 
 interface UserProfile {
   userId: number;
@@ -13,22 +14,28 @@ interface UserProfile {
   phoneNumber: string;
   gender: string;
   paymentPlans: any[];
+  settings: number;
 }
 
 interface EditedProfile extends UserProfile {
   oldPassword?: string;
   newPassword?: string;
+  newPasswordConfirm?: string;
 }
 
 export default function Settings() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingNotifications, setIsEditingNotifications] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<EditedProfile>>({});
   const [showOptions, setShowOptions] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showNewPasswordConfirm, setShowNewPasswordConfirm] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -42,7 +49,7 @@ export default function Settings() {
         return;
       }
 
-      const response = await axios.get('http://10.0.2.2:8080/auth/profil', {
+      const response = await axios.get(`${API_URL}/auth/profil`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -80,77 +87,7 @@ export default function Settings() {
     );
   };
 
-  const handleSave = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        router.replace('/login');
-        return;
-      }
-
-      if ((editedProfile.oldPassword && !editedProfile.newPassword) || 
-          (!editedProfile.oldPassword && editedProfile.newPassword)) {
-        setPasswordError('Lütfen hem eski hem de yeni parolayı girin');
-        return;
-      }
-      if (editedProfile.newPassword && editedProfile.newPassword.length < 6) {
-        setPasswordError('Yeni parola en az 6 karakter olmalıdır');
-        return;
-      }
-
-      await axios.put('http://10.0.2.2:8080/auth/update-profile', editedProfile, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      setProfile({
-        ...editedProfile,
-        userId: profile!.userId,
-        email: profile!.email,
-        paymentPlans: profile!.paymentPlans
-      } as UserProfile);
-      
-      setIsEditing(false);
-      setPasswordError(null);
-
-      Toast.show({
-        type: 'success',
-        text1: 'Başarılı',
-        text2: editedProfile.newPassword 
-          ? 'Profil bilgileriniz ve parolanız güncellendi'
-          : 'Profil bilgileriniz güncellendi',
-      });
-    } catch (error: any) {
-      
-      const errorMessage = error.response?.data?.hata;
-      
-      if (errorMessage === 'Eski şifre hatalı.') {
-        setPasswordError('Eski şifreniz hatalı');
-        Toast.show({
-          type: 'error',
-          text1: 'Hata',
-          text2: 'Eski şifreniz hatalı',
-          visibilityTime: 3000,
-          position: 'top',
-        });
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Hata',
-          text2: errorMessage || 'Profil güncellenirken bir hata oluştu',
-        });
-      }
-    }
-  };
-
-  const handleCancel = () => {
-    setEditedProfile(profile as UserProfile);
-    setIsEditing(false);
-    setPasswordError(null);
-  };
-
-  const handleEdit = () => {
+  const handleEditProfile = () => {
     if (profile) {
       setEditedProfile({
         userId: profile.userId,
@@ -158,9 +95,148 @@ export default function Settings() {
         fullName: profile.fullName,
         phoneNumber: profile.phoneNumber,
         gender: profile.gender,
-        paymentPlans: profile.paymentPlans
+        paymentPlans: profile.paymentPlans,
+        settings: profile.settings
       });
-      setIsEditing(true);
+      setIsEditingProfile(true);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      if (editedProfile.newPassword && editedProfile.newPassword !== editedProfile.newPasswordConfirm) {
+        setPasswordError('Yeni parolalar eşleşmiyor');
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({
+            y: 500,
+            animated: true
+          });
+        }, 100);
+        return;
+      }
+
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      const response = await axios.put(
+        `${API_URL}/auth/update-profile`,
+        {
+          email: editedProfile.email,
+          fullName: editedProfile.fullName,
+          phoneNumber: editedProfile.phoneNumber,
+          gender: editedProfile.gender,
+          oldPassword: editedProfile.oldPassword,
+          newPassword: editedProfile.newPassword
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        Toast.show({
+          type: 'success',
+          text1: 'Başarılı',
+          text2: 'Profil bilgileriniz güncellendi',
+          visibilityTime: 2000,
+        });
+
+        setProfile({
+          ...profile,
+          ...editedProfile,
+          oldPassword: undefined,
+          newPassword: undefined
+        });
+        setEditedProfile({
+          ...editedProfile,
+          oldPassword: '',
+          newPassword: '',
+          newPasswordConfirm: ''
+        });
+        setPasswordError('');
+        setIsEditingProfile(false);
+      }
+    } catch (error) {
+      console.error('Profil güncelleme hatası:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Profil güncellenirken bir hata oluştu',
+        visibilityTime: 2000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      await axios.post(
+        `${API_URL}/settings/${profile?.userId}/notification-days?days=${editedProfile.settings}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      Toast.show({
+        type: 'success',
+        text1: 'Başarılı',
+        text2: 'Bildirim ayarlarınız güncellendi',
+        visibilityTime: 2000,
+      });
+
+      setProfile({
+        ...profile,
+        settings: editedProfile.settings
+      });
+      setIsEditingNotifications(false);
+    } catch (error) {
+      console.error('Bildirim ayarları güncelleme hatası:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Hata',
+        text2: 'Bildirim ayarları güncellenirken bir hata oluştu',
+        visibilityTime: 2000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelProfile = () => {
+    setEditedProfile(profile as UserProfile);
+    setIsEditingProfile(false);
+    setPasswordError(null);
+  };
+
+  const handleCancelNotifications = () => {
+    setEditedProfile(profile as UserProfile);
+    setIsEditingNotifications(false);
+  };
+
+  const handleEditNotifications = () => {
+    if (profile) {
+      setEditedProfile({
+        ...profile,
+        settings: profile.settings
+      });
+      setIsEditingNotifications(true);
     }
   };
 
@@ -188,29 +264,35 @@ export default function Settings() {
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.title}>Ayarlar</Text>
-        {isEditing ? (
-          <View style={styles.editButtonsContainer}>
-            <TouchableOpacity onPress={handleCancel} style={styles.editButton}>
-              <Feather name="x" size={20} color="#FF4444" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={styles.editButton}>
-              <Feather name="check" size={20} color="#4649E5" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-            <Feather name="edit-2" size={20} color="#4649E5" />
-          </TouchableOpacity>
-        )}
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.content} 
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profil Bilgileri</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Profil Bilgileri</Text>
+            {isEditingProfile ? (
+              <View style={styles.editButtonsContainer}>
+                <TouchableOpacity onPress={handleCancelProfile} style={styles.editButton}>
+                  <Feather name="x" size={20} color="#FF4444" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleSaveProfile} style={styles.editButton}>
+                  <Feather name="check" size={20} color="#4649E5" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={handleEditProfile} style={styles.editButton}>
+                <Feather name="edit-2" size={20} color="#4649E5" />
+              </TouchableOpacity>
+            )}
+          </View>
           
           <View style={styles.formGroup}>
             <Text style={styles.label}>Ad Soyad</Text>
-            {isEditing ? (
+            {isEditingProfile ? (
               <TextInput
                 style={styles.input}
                 value={editedProfile.fullName}
@@ -230,7 +312,7 @@ export default function Settings() {
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Telefon Numarası</Text>
-            {isEditing ? (
+            {isEditingProfile ? (
               <TextInput
                 style={styles.input}
                 value={editedProfile.phoneNumber}
@@ -246,7 +328,7 @@ export default function Settings() {
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Cinsiyet</Text>
-            {isEditing ? (
+            {isEditingProfile ? (
               <View style={styles.genderContainer}>
                 {genderOptions.map((option) => (
                   <TouchableOpacity
@@ -271,7 +353,7 @@ export default function Settings() {
             )}
           </View>
 
-          {isEditing && (
+          {isEditingProfile && (
             <View style={styles.passwordSection}>
               <Text style={styles.passwordTitle}>Parola Değiştirme (İsteğe Bağlı)</Text>
               
@@ -329,6 +411,33 @@ export default function Settings() {
                 </View>
               </View>
 
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Yeni Parola Tekrar</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.input}
+                    value={editedProfile.newPasswordConfirm}
+                    onChangeText={(text) => {
+                      setEditedProfile({...editedProfile, newPasswordConfirm: text});
+                      setPasswordError(null);
+                    }}
+                    placeholder="Yeni parolanızı tekrar girin"
+                    placeholderTextColor="#71727A"
+                    secureTextEntry={!showNewPasswordConfirm}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => setShowNewPasswordConfirm(!showNewPasswordConfirm)}
+                  >
+                    <Feather 
+                      name={showNewPasswordConfirm ? "eye" : "eye-off"} 
+                      size={20} 
+                      color="#71727A" 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {passwordError && (
                 <View style={styles.errorContainer}>
                   <Feather name="alert-circle" size={16} color="#FF4444" />
@@ -337,6 +446,52 @@ export default function Settings() {
               )}
             </View>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Bildirim Ayarları</Text>
+            {isEditingNotifications ? (
+              <View style={styles.editButtonsContainer}>
+                <TouchableOpacity onPress={handleCancelNotifications} style={styles.editButton}>
+                  <Feather name="x" size={20} color="#FF4444" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleSaveNotifications} style={styles.editButton}>
+                  <Feather name="check" size={20} color="#4649E5" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={handleEditNotifications} style={styles.editButton}>
+                <Feather name="edit-2" size={20} color="#4649E5" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Abonelik Bitiş Bildirimi</Text>
+            <Text style={styles.description}>
+              Aboneliklerinizin bitiş tarihine kaç gün kala bildirim almak istiyorsunuz?
+            </Text>
+            {isEditingNotifications ? (
+              <TextInput
+                style={styles.input}
+                value={editedProfile.settings?.toString()}
+                onChangeText={(text) => {
+                  const days = parseInt(text) || 0;
+                  setEditedProfile({
+                    ...editedProfile,
+                    settings: days
+                  });
+                }}
+                placeholder="Örn: 7"
+                placeholderTextColor="#71727A"
+                keyboardType="numeric"
+                maxLength={2}
+              />
+            ) : (
+              <Text style={styles.value}>{profile.settings || 5} gün</Text>
+            )}
+          </View>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -403,7 +558,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingHorizontal: 24,
     paddingBottom: 20,
   },
@@ -433,11 +588,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     color: '#FFFFFF',
     fontFamily: 'Poppins-SemiBold',
-    marginBottom: 16,
   },
   formGroup: {
     marginBottom: 16,
@@ -598,5 +758,11 @@ const styles = StyleSheet.create({
     color: '#FF4444',
     fontSize: 14,
     fontFamily: 'Poppins-Medium',
+  },
+  description: {
+    fontSize: 12,
+    color: '#71727A',
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 12,
   },
 }); 

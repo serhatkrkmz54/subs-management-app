@@ -6,6 +6,7 @@ import BackButton from '../components/BackButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import { API_URL } from './constants';
 
 export default function Verify() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function Verify() {
     
     try {
       setLoading(true);
-      await axios.post('http://10.0.2.2:8080/auth/re-send-activation-code', { email });
+      await axios.post(`${API_URL}/auth/re-send-activation-code`, { email });
       
       Toast.show({
         type: 'success',
@@ -102,7 +103,7 @@ export default function Verify() {
 
     try {
       setLoading(true);
-      await axios.get(`http://10.0.2.2:8080/auth/activate-account?token=${verificationCode}`);
+      await axios.get(`${API_URL}/auth/activate-account?token=${verificationCode}`);
 
       Toast.show({
         type: 'success',
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     borderWidth: 1,
-    borderColor: '#1A1A2E',
+    borderColor: '#f5f5f5',
     borderRadius: 12,
     backgroundColor: '#0A0A1B',
     color: '#FFFFFF',
