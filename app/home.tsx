@@ -13,7 +13,7 @@ import { API_URL } from './constants';
 interface UserProfile {
   userId: number;
   fullName: string;
-  paymentPlans: any[];
+  paymentPlans: PaymentPlan[];
   email: string;
   phoneNumber: string;
 }
@@ -86,17 +86,17 @@ export default function Home() {
           Authorization: `Bearer ${token}`
         }
       });
-
+      
       setProfile(profileResponse.data);
 
-      if (profileResponse.data?.userId) {
-        const plansResponse = await axios.get(`${API_URL}/payment-plan/all-plan/${profileResponse.data.userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setPaymentPlans(plansResponse.data || []);
-      }
+      // if (profileResponse.data?.userId) {
+      //   const plansResponse = await axios.get(`${API_URL}/payment-plan/all-plan/${profileResponse.data.userId}`, {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`
+      //     }
+      //   });
+      //   setPaymentPlans(plansResponse.data || []);
+      // }
     } catch (error) {
       console.error('Profil yükleme hatası:', error);
       if (axios.isAxiosError(error)) {
@@ -180,11 +180,11 @@ export default function Home() {
     }
   }, []);
 
-  const filteredPaymentPlans = paymentPlans.filter(plan => 
+  const filteredPaymentPlans = profile?.paymentPlans.filter((plan: PaymentPlan) => 
     plan.abonelikAdi.toLowerCase().includes(searchQuery.toLowerCase()) ||
     plan.frequency.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
+  console.log("filteredPaymentPlans", filteredPaymentPlans);
   const handleDelete = async (planId: number) => {
     Alert.alert(
       "Abonelik Silme",
@@ -290,7 +290,7 @@ export default function Home() {
         return;
       }
 
-      const expiredPlans = paymentPlans.filter(plan => {
+      const expiredPlans = profile?.paymentPlans.filter(plan => {
         if (!plan.bitisTarihi) return false;
         const endDate = new Date(plan.bitisTarihi);
         const now = new Date();
@@ -506,7 +506,7 @@ export default function Home() {
           )}
         </View>
 
-        {paymentPlans.length === 0 ? (
+        {profile?.paymentPlans.length === 0 ? (
           <>
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
@@ -542,14 +542,14 @@ export default function Home() {
                   <View style={styles.cardHeader}>
                     <View style={styles.totalAmountContainer}>
                       <Text style={styles.totalLabel}>Toplam Ödeme</Text>
-                      {calculateTotalPayment(paymentPlans).TRY > 0 && (
+                      {calculateTotalPayment(profile?.paymentPlans || []).TRY > 0 && (
                         <Text style={styles.totalAmount}>
-                          {calculateTotalPayment(paymentPlans).TRY.toFixed(2)} ₺
+                          {calculateTotalPayment(profile?.paymentPlans || []).TRY.toFixed(2)} ₺
                         </Text>
                       )}
-                      {calculateTotalPayment(paymentPlans).USD > 0 && (
+                      {calculateTotalPayment(profile?.paymentPlans || []).USD > 0 && (
                         <Text style={styles.totalAmount}>
-                          {calculateTotalPayment(paymentPlans).USD.toFixed(2)} $
+                          {calculateTotalPayment(profile?.paymentPlans || []).USD.toFixed(2)} $
                         </Text>
                       )}
                     </View>
