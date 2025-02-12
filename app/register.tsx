@@ -1,13 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Feather } from '@expo/vector-icons';
 import BackButton from '../components/BackButton';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './constants';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 
 export default function Register() {
   const router = useRouter();
@@ -23,6 +25,42 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  
+
+  async function getExpoPushToken() {
+  let token = null;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    console.log('Bildirim izni verilmedi!');
+    return null;
+  }
+
+  if (Device.isDevice) {
+    const { data } = await Notifications.getExpoPushTokenAsync();
+    token = data;
+  } else {
+    console.log('Fiziksel bir cihazda çalıştırmalısın!');
+  }
+
+  return token;
+}
   const formatPhoneNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
     const limited = cleaned.slice(0, 10);
@@ -68,6 +106,7 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
+    const expoPushToken = await getExpoPushToken();
     if (!name || !email || !phone || !password || !gender || !acceptTerms) {
       Toast.show({
         type: 'error',
@@ -88,12 +127,14 @@ export default function Register() {
 
     try {
       setLoading(true);
+      
       const response = await axios.post(`${API_URL}/auth/register`, {
         fullName: name,
         email,
         phoneNumber: phone.replace(/-/g, ''),
         password,
-        gender
+        gender,
+        expoPushToken
       });
 
       await AsyncStorage.setItem('userEmail', email);

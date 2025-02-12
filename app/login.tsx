@@ -121,10 +121,29 @@ export default function Login() {
 
     } catch (error: any) {
       let errorMessage = 'Giriş yapılamadı.';
-      console.log(error);
       
-      if (error.response?.data?.message === 'Bad credentials') {
+      if (error.response?.data?.hata === 'User is disabled') {
+        try {
+          await axios.post(`${API_URL}/auth/re-send-activation-code`, { email });
+          await AsyncStorage.setItem('userEmail', email);
+          
+          Toast.show({
+            type: 'info',
+            text1: 'Doğrulama Gerekli',
+            text2: 'E-posta adresiniz doğrulanmamış, yeni bir doğrulama kodu gönderdik.',
+          });
+
+          setTimeout(() => {
+            router.replace('/verify');
+          }, 2000);
+          return;
+        } catch (resendError) {
+          errorMessage = 'Doğrulama kodu gönderilirken bir hata oluştu.';
+        }
+      } else if (error.response?.data?.hata === 'Bad credentials') {
         errorMessage = 'E-posta adresi veya şifre hatalı.';
+      } else if (error.response?.data?.hataKoduAciklama) {
+        errorMessage = error.response.data.hataKoduAciklama;
       }
 
       Toast.show({

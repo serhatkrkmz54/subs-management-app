@@ -184,7 +184,6 @@ export default function Home() {
     plan.abonelikAdi.toLowerCase().includes(searchQuery.toLowerCase()) ||
     plan.frequency.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  console.log("filteredPaymentPlans", filteredPaymentPlans);
   const handleDelete = async (planId: number) => {
     Alert.alert(
       "Abonelik Silme",

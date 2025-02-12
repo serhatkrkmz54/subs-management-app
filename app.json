@@ -8,19 +8,16 @@
     "newArchEnabled": true,
     "userInterfaceStyle": "light",
     "androidStatusBar": {
-      "backgroundColor": "transparent",
       "translucent": true,
       "barStyle": "light-content",
       "hidden": false
     },
     "androidNavigationBar": {
-      "backgroundColor": "#050511",
       "barStyle": "light-content"
     },
     "splash": {
       "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#050511"
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -34,12 +31,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#050511"
+        "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "package": "com.subsmanagement.app",
       "googleServicesFile": "./google-services.json",
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "useNextNotificationsApi": true
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -49,13 +46,11 @@
         "expo-notifications",
         {
           "icon": "./assets/images/notification-icon.png",
-          "color": "#ffffff",
-          "androidMode": "default",
-          "androidCollapsedTitle": "SubsManager",
-          "iosDisplayInForeground": true,
+          "defaultChannel": "default",
           "sounds": [
             "./assets/notification_sound.wav"
           ]
+          
         }
       ]
     ],
