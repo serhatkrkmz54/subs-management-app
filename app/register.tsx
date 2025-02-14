@@ -7,7 +7,7 @@ import BackButton from '../components/BackButton';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from './constants';
+import { API_URL } from './_constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 

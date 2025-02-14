@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { API_URL } from './constants';
+import { API_URL } from './_constants';
 
 
 interface UserProfile {
@@ -16,6 +16,7 @@ interface UserProfile {
   paymentPlans: PaymentPlan[];
   email: string;
   phoneNumber: string;
+  settings: number;
 }
 
 interface PaymentPlan {
@@ -46,7 +47,6 @@ interface EditedPlan {
 export default function Home() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
   const [greeting, setGreeting] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,20 +117,21 @@ export default function Home() {
       'Tabii': require('../assets/images/platform-logo/tabii-big-logo.png'),
       'ChatGPT': require('../assets/images/platform-logo/chatgpt-big-logo.png')
     };
-    return logoMap[platformName] || require('../assets/images/default-user.jpg');
+    return logoMap[platformName] || require('../assets/images/default-platform.png');
   };
 
   const isNearExpiry = (endDate: string | null): boolean => {
     if (!endDate) return false;
     const end = new Date(endDate);
     const now = new Date();
-
+    
     const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
     const nowUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
     
     const diffTime = endUTC - nowUTC;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 5 && diffDays > 0;
+    
+    return diffDays >= 0 && diffDays <= (profile?.settings || 5);
   };
 
   const getRemainingDays = (endDate: string | null): number => {
@@ -180,7 +181,7 @@ export default function Home() {
     }
   }, []);
 
-  const filteredPaymentPlans = profile?.paymentPlans.filter((plan: PaymentPlan) => 
+  const filteredPaymentPlans:any = profile?.paymentPlans.filter((plan: PaymentPlan) => 
     plan.abonelikAdi.toLowerCase().includes(searchQuery.toLowerCase()) ||
     plan.frequency.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -296,7 +297,7 @@ export default function Home() {
         const diffTime = now.getTime() - endDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays > 3;
-      });
+      }) ?? [];
 
       if (expiredPlans.length > 0) {
         for (const plan of expiredPlans) {
@@ -568,13 +569,13 @@ export default function Home() {
               <View style={styles.expiringSection}>
                 <Text style={styles.sectionTitle}>Yaklaşan Ödemeler</Text>
                 {filteredPaymentPlans
-                  .filter(plan => isNearExpiry(plan.bitisTarihi))
-                  .sort((a, b) => {
+                  .filter((plan:any) => isNearExpiry(plan.bitisTarihi))
+                  .sort((a:any, b:any) => {
                     const daysA = getRemainingDays(a.bitisTarihi);
                     const daysB = getRemainingDays(b.bitisTarihi);
                     return daysA - daysB;
                   })
-                  .map((plan) => (
+                  .map((plan:any) => (
                     <Swipeable
                       key={plan.id}
                       renderRightActions={() => renderRightActions(plan)}
@@ -641,12 +642,18 @@ export default function Home() {
                                   styles.remainingDaysContainer,
                                   isNearExpiry(plan.bitisTarihi) && styles.remainingDaysContainerHighlight
                                 ]}>
-                                  <Text style={[
-                                    styles.remainingDaysText,
-                                    isNearExpiry(plan.bitisTarihi) && styles.remainingDaysTextHighlight
-                                  ]}>
-                                    {getRemainingDays(plan.bitisTarihi)} gün kaldı
-                                  </Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={[
+                                      styles.remainingDaysText, 
+                                      isNearExpiry(plan.bitisTarihi) && styles.remainingDaysTextHighlight,
+                                      getRemainingDays(plan.bitisTarihi) === 0 && { color: '#FF4444' }
+                                    ]}>
+                                      {getRemainingDays(plan.bitisTarihi) === 0 ? "Abonelik kısa süre içinde sonlanacak" : `${getRemainingDays(plan.bitisTarihi)} gün kaldı`}
+                                    </Text>
+                                    {getRemainingDays(plan.bitisTarihi) === 0 && (
+                                      <Feather name="alert-circle" size={16} color="#FF4444" style={{ marginLeft: 8 }} />
+                                    )}
+                                  </View>
                                 </View>
                               </>
                             )}
@@ -662,13 +669,13 @@ export default function Home() {
             <View style={styles.regularSection}>
               <Text style={styles.sectionTitle}>Aktif Abonelikler</Text>
               {filteredPaymentPlans
-                .filter(plan => !isExpired(plan.bitisTarihi) && !isNearExpiry(plan.bitisTarihi))
-                .sort((a, b) => {
+                .filter((plan:any) => !isExpired(plan.bitisTarihi) && !isNearExpiry(plan.bitisTarihi))
+                .sort((a:any, b:any) => {
                   if (!a.bitisTarihi) return 1;
                   if (!b.bitisTarihi) return -1;
                   return new Date(a.bitisTarihi).getTime() - new Date(b.bitisTarihi).getTime();
                 })
-                .map((plan) => (
+                .map((plan:any) => (
                   <Swipeable
                     key={plan.id}
                     renderRightActions={() => renderRightActions(plan)}
@@ -735,12 +742,18 @@ export default function Home() {
                                 styles.remainingDaysContainer,
                                 isNearExpiry(plan.bitisTarihi) && styles.remainingDaysContainerHighlight
                               ]}>
-                                <Text style={[
-                                  styles.remainingDaysText,
-                                  isNearExpiry(plan.bitisTarihi) && styles.remainingDaysTextHighlight
-                                ]}>
-                                  {getRemainingDays(plan.bitisTarihi)} gün kaldı
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Text style={[
+                                    styles.remainingDaysText, 
+                                    isNearExpiry(plan.bitisTarihi) && styles.remainingDaysTextHighlight,
+                                    getRemainingDays(plan.bitisTarihi) === 0 && { color: '#FF4444' }
+                                  ]}>
+                                    {getRemainingDays(plan.bitisTarihi) === 0 ? "Abonelik kısa süre içinde sonlanacak" : `${getRemainingDays(plan.bitisTarihi)} gün kaldı`}
+                                  </Text>
+                                  {getRemainingDays(plan.bitisTarihi) === 0 && (
+                                    <Feather name="alert-circle" size={16} color="#FF4444" style={{ marginLeft: 8 }} />
+                                  )}
+                                </View>
                               </View>
                             </>
                           )}
@@ -752,7 +765,7 @@ export default function Home() {
             </View>
 
             {/* Süresi Dolan Abonelikler - En Altta */}
-            {filteredPaymentPlans.some(plan => isExpired(plan.bitisTarihi)) && (
+            {filteredPaymentPlans?.some(plan => isExpired(plan.bitisTarihi)) && (
               <View style={styles.expiredSection}>
                 <Text style={styles.sectionTitle}>Süresi Dolan Abonelikler</Text>
                 <Text style={styles.expiredWarning}>
@@ -1308,7 +1321,12 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     marginTop: 12,
+  },
+  remainingDaysContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   remainingDaysText: {
     color: '#4649E5',
@@ -1594,5 +1612,14 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
+  },
+  remainingDaysContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  warningIcon: {
+    marginLeft: 4,
   },
 }); 

@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { API_URL } from './constants';
+import { API_URL } from './_constants';
 
 interface UserProfile {
   userId: number;

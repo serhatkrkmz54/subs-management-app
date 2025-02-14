@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
-import { API_URL } from './constants';
+import { API_URL } from './_constants';
 
 interface Package {
   id: number;

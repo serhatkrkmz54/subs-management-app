@@ -1,42 +1,32 @@
 import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import CustomSplashScreen from '../components/SplashScreen';
 import * as Font from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 
+
 export default function RootLayout() {
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const prepare = async () => {
       try {
-        // Font dosyalarını yükle
         await Font.loadAsync({
           'Poppins-Regular': require('../assets/fonts/Poppins/Poppins-Regular.ttf'),
           'Poppins-Medium': require('../assets/fonts/Poppins/Poppins-Medium.ttf'),
           'Poppins-SemiBold': require('../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
           'Poppins-Bold': require('../assets/fonts/Poppins/Poppins-Bold.ttf'),
         });
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (e) {
         console.warn(e);
-      } finally {
-        setIsReady(true);
       }
     };
-
     prepare();
   }, []);
 
-  if (!isReady) {
-    return <CustomSplashScreen />;
-  }
 
   return (
-    <GestureHandlerRootView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={{ flex: 1, backgroundColor: '#050511' }}>
         <StatusBar style="light" translucent backgroundColor="transparent" />
         <Stack

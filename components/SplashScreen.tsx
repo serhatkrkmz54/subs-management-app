@@ -1,16 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
-import * as SplashScreen from 'expo-splash-screen';
-import { useCallback } from 'react';
-
-SplashScreen.preventAutoHideAsync();
 
 export default function CustomSplashScreen() {
-  const onLayoutRootView = useCallback(async () => {
-    await SplashScreen.hideAsync();
-  }, []);
 
   return (
-    <View style={styles.container} onLayout={onLayoutRootView}>
+    <View style={styles.container}>
       <Text style={styles.text}>SubsManager</Text>
     </View>
   );

@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { API_URL } from '../_constants';
 
 export default function StaticSubsAdd() {
   const router = useRouter();
@@ -95,7 +96,7 @@ export default function StaticSubsAdd() {
       const token = await AsyncStorage.getItem('userToken');
       
       await axios.post(
-        `http://10.0.2.2:8080/payment-plan/add/${params.id}`,
+        `${API_URL}/payment-plan/add/${params.id}`,
         {
           platformName: formData.platformName,
           packageName: formData.packageName,

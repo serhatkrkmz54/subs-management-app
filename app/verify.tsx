@@ -6,7 +6,7 @@ import BackButton from '../components/BackButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
-import { API_URL } from './constants';
+import { API_URL } from './_constants';
 
 export default function Verify() {
   const router = useRouter();

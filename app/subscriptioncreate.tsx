@@ -6,7 +6,7 @@ import axios from 'axios';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Toast from 'react-native-toast-message';
-import { API_URL } from './constants';
+import { API_URL } from './_constants';
 
 export default function SubscriptionCreate() {
   const router = useRouter();
