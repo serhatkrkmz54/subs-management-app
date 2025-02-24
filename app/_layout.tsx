@@ -41,6 +41,7 @@ export default function RootLayout() {
           <Stack.Screen name="verify" />
           <Stack.Screen name="home" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="statistics" />
           <Stack.Screen name="staticsubs" />
           <Stack.Screen name="subscriptioncreate" />
           <Stack.Screen name="editsubscription" />

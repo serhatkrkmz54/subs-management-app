@@ -539,6 +539,13 @@ export default function Settings() {
             <Feather name={showOptions ? "x" : "plus"} size={32} color="#FFFFFF" />
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            style={styles.bottomBarItem}
+            onPress={() => router.push('/statistics')}
+          >
+            <Feather name="bar-chart-2" size={24} color="#71727A" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.bottomBarItem}>
             <Feather name="settings" size={24} color="#9799FF" />
           </TouchableOpacity>

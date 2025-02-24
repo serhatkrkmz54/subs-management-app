@@ -29,7 +29,7 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="abonex"/>
         <data android:scheme="com.subsmanagement.app"/>
-        <data android:scheme="exp+abonex"/>
+        <data android:scheme="exp+subs-management-app"/>
       </intent-filter>
     </activity>
   </application>
