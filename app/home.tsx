@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, Animated, Easing, ScrollView, Modal, LayoutRectangle, ImageBackground, RefreshControl, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, Animated, Easing, ScrollView, Modal, LayoutRectangle, ImageBackground, RefreshControl, TextInput, Alert, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -65,7 +65,26 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, []);
-
+  const handleLogout = async () => {
+    Alert.alert(
+      "Çıkış Yap",
+      "Çıkış yapmak istediğinize emin misiniz?",
+      [
+        {
+          text: "İptal",
+          style: "cancel"
+        },
+        {
+          text: "Çıkış Yap",
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.removeItem('userToken');
+            router.replace('/login');
+          }
+        }
+      ]
+    );
+  };
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'Günaydın';
@@ -507,16 +526,47 @@ export default function Home() {
         </View>
 
         {profile?.paymentPlans.length === 0 ? (
-          <>
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIcon}>
-                <Text style={styles.dollarIcon}>$</Text>
-              </View>
-              <Text style={styles.emptyStateText}>
-                Aboneliklerinizi yönetmek için planlarınızı ekleyin.
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyContent}>
+              <TouchableOpacity 
+                style={styles.addFirstButton}
+                onPress={() => setShowOptions(true)}
+              >
+                <Feather name="plus" size={32} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.emptyTitle}>Henüz bir aboneliğiniz yok</Text>
+              <Text style={styles.emptyText}>
+                Aboneliklerinizi ekleyerek takip etmeye başlayın
               </Text>
             </View>
-          </>
+
+            {showOptions && (
+              <TouchableWithoutFeedback onPress={() => setShowOptions(false)}>
+                <View style={styles.overlay}>
+                  <View style={styles.optionsContainer}>
+                    <TouchableOpacity 
+                      style={styles.optionButton}
+                      onPress={() => {
+                        router.push('/staticsubs');
+                        setShowOptions(false);
+                      }}
+                    >
+                      <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.optionButton}
+                      onPress={() => {
+                        router.push('/subscriptioncreate');
+                        setShowOptions(false);
+                      }}
+                    >
+                      <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            )}
+          </View>
         ) : (
           <ScrollView 
             style={styles.plansList}
@@ -826,29 +876,6 @@ export default function Home() {
             )}
           </ScrollView>
         )}
-
-        {showOptions && (
-          <View style={styles.optionsContainer}>
-            <TouchableOpacity 
-              style={styles.optionButton}
-              onPress={() => {
-                router.push('/staticsubs');
-                setShowOptions(false);
-              }}
-            >
-              <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.optionButton}
-              onPress={() => {
-                router.push('/subscriptioncreate');
-                setShowOptions(false);
-              }}
-            >
-              <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       <View style={styles.bottomBar}>
@@ -856,7 +883,13 @@ export default function Home() {
           <TouchableOpacity style={styles.bottomBarItem}>
             <Feather name="home" size={24} color="#9799FF" />
           </TouchableOpacity>
-
+          
+          <TouchableOpacity 
+            style={styles.bottomBarItem}
+            onPress={() => router.push('/statistics')}
+          >
+            <Feather name="bar-chart-2" size={24} color="#71727A" />
+          </TouchableOpacity>
           <TouchableOpacity 
             style={styles.addButton}
             onPress={() => setShowOptions(!showOptions)}
@@ -866,19 +899,45 @@ export default function Home() {
 
           <TouchableOpacity 
             style={styles.bottomBarItem}
-            onPress={() => router.push('/statistics')}
-          >
-            <Feather name="bar-chart-2" size={24} color="#71727A" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.bottomBarItem}
             onPress={() => router.push('/settings')}
           >
             <Feather name="settings" size={24} color="#71727A" />
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.bottomBarItem}
+            onPress={handleLogout}
+          >
+            <Feather name="log-out" size={24} color="#FF4444" />
+          </TouchableOpacity>
         </View>
       </View>
+
+      {showOptions && (
+        <TouchableWithoutFeedback onPress={() => setShowOptions(false)}>
+          <View style={styles.overlay}>
+            <View style={styles.optionsContainer}>
+              <TouchableOpacity 
+                style={styles.optionButton}
+                onPress={() => {
+                  router.push('/staticsubs');
+                  setShowOptions(false);
+                }}
+              >
+                <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.optionButton}
+                onPress={() => {
+                  router.push('/subscriptioncreate');
+                  setShowOptions(false);
+                }}
+              >
+                <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      )}
 
       <Modal
         visible={showEditModal}
@@ -1141,78 +1200,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
   },
-  emptyState: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    transform: [{ translateY: -50 }],
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyStateIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#1A1A2E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dollarIcon: {
-    fontSize: 32,
-    color: '#9799FF',
-    fontFamily: 'Poppins-SemiBold',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    fontFamily: 'Poppins-Regular',
-    lineHeight: 24,
-    opacity: 0.8,
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 64,
-    backgroundColor: 'rgba(10, 10, 27, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(26, 26, 46, 0.5)',
-  },
-  bottomBarContent: {
+  emptyContainer: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    position: 'relative',
+  },
+  emptyContent: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    padding: 24,
   },
-  bottomBarItem: {
-    padding: 12,
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  addFirstButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#4649E5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Platform.OS === 'ios' ? 20 : 0,
+    marginBottom: 24,
+    shadowColor: '#4649E5',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  arrow: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 140 : 120,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(70, 73, 229, 0.1)',
-    padding: 12,
-    borderRadius: 24,
+  emptyTitle: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-SemiBold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#71727A',
+    fontFamily: 'Poppins-Regular',
+    textAlign: 'center',
   },
   optionsContainer: {
     position: 'absolute',
@@ -1225,6 +1251,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1,
     borderColor: 'rgba(70, 73, 229, 0.2)',
+    zIndex: 1000,
   },
   optionButton: {
     backgroundColor: '#4649E5',
@@ -1620,13 +1647,46 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
   },
-  remainingDaysContent: {
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    height: Platform.OS === 'ios' ? 84 : 84,
+    backgroundColor: 'rgba(10, 10, 27, 0.95)',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    justifyContent: 'space-around',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26, 26, 46, 0.5)',
   },
-  warningIcon: {
-    marginLeft: 4,
+  bottomBarContent: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  bottomBarItem: {
+    padding: 12,
+  },
+  addButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#4649E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 999,
   },
 }); 

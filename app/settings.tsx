@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -263,7 +263,17 @@ export default function Settings() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.title}>Ayarlar</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Ayarlar</Text>
+        </View>
+      </View>
+
+      <View style={styles.profileHeader}>
+        <Image 
+          source={require('../assets/images/default-user.jpg')} 
+          style={styles.profileImage}
+        />
+        <Text style={styles.profileName}>{profile?.fullName || 'Kullanıcı'}</Text>
       </View>
 
       <ScrollView 
@@ -532,12 +542,7 @@ export default function Settings() {
             <Feather name="home" size={24} color="#71727A" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => setShowOptions(!showOptions)}
-          >
-            <Feather name={showOptions ? "x" : "plus"} size={32} color="#FFFFFF" />
-          </TouchableOpacity>
+          
 
           <TouchableOpacity 
             style={styles.bottomBarItem}
@@ -545,9 +550,20 @@ export default function Settings() {
           >
             <Feather name="bar-chart-2" size={24} color="#71727A" />
           </TouchableOpacity>
-
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => setShowOptions(!showOptions)}
+          >
+            <Feather name={showOptions ? "x" : "plus"} size={32} color="#FFFFFF" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.bottomBarItem}>
             <Feather name="settings" size={24} color="#9799FF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.bottomBarItem}
+            onPress={handleLogout}
+          >
+            <Feather name="log-out" size={24} color="#FF4444" />
           </TouchableOpacity>
         </View>
       </View>
@@ -571,6 +587,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     fontSize: 20,
@@ -655,7 +675,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 64,
+    height: Platform.OS === 'ios' ? 84 : 84,
     backgroundColor: 'rgba(10, 10, 27, 0.95)',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -668,7 +688,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 20,
   },
   bottomBarItem: {
     padding: 12,
@@ -771,5 +791,24 @@ const styles = StyleSheet.create({
     color: '#71727A',
     fontFamily: 'Poppins-Regular',
     marginBottom: 12,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(70, 73, 229, 0.1)',
+    marginBottom: 24,
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+  },
+  profileName: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-SemiBold',
+    textAlign: 'center',
   },
 }); 
