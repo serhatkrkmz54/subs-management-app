@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, Animated, Easing, ScrollView, Modal, LayoutRectangle, ImageBackground, RefreshControl, TextInput, Alert, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image, Animated, Easing, ScrollView, Modal, LayoutRectangle, ImageBackground, RefreshControl, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -56,11 +56,13 @@ export default function Home() {
   const [selectedPlan, setSelectedPlan] = useState<EditedPlan | null>(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   useEffect(() => {
     fetchProfileAndPlans();
     setGreeting(getGreeting());
     checkExpiredSubscriptions();
+    checkUnreadNotifications();
     const interval = setInterval(checkExpiredSubscriptions, 24 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
@@ -470,6 +472,21 @@ export default function Home() {
     </TouchableOpacity>
   );
 
+  const checkUnreadNotifications = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+
+      const response = await axios.get(`${API_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setHasUnreadNotifications(response.data.length > 0);
+    } catch (error) {
+      console.error('Okunmamış bildirimler kontrol edilirken hata oluştu:', error);
+    }
+  };
+
   if (!profile) {
     return (
       <View style={styles.container}>
@@ -498,6 +515,13 @@ export default function Home() {
               onPress={() => setShowSearch(!showSearch)}
             >
               <Feather name="search" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.searchButton}
+              onPress={() => router.push('/notifications')}
+            >
+              <Feather name="bell" size={24} color="#FFFFFF" />
+              <View style={styles.unreadDot} />
             </TouchableOpacity>
           </View>
           
@@ -541,30 +565,26 @@ export default function Home() {
             </View>
 
             {showOptions && (
-              <TouchableWithoutFeedback onPress={() => setShowOptions(false)}>
-                <View style={styles.overlay}>
-                  <View style={styles.optionsContainer}>
-                    <TouchableOpacity 
-                      style={styles.optionButton}
-                      onPress={() => {
-                        router.push('/staticsubs');
-                        setShowOptions(false);
-                      }}
-                    >
-                      <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.optionButton}
-                      onPress={() => {
-                        router.push('/subscriptioncreate');
-                        setShowOptions(false);
-                      }}
-                    >
-                      <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableWithoutFeedback>
+              <View style={styles.optionsContainer}>
+                <TouchableOpacity 
+                  style={styles.optionButton}
+                  onPress={() => {
+                    router.push('/staticsubs');
+                    setShowOptions(false);
+                  }}
+                >
+                  <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.optionButton}
+                  onPress={() => {
+                    router.push('/subscriptioncreate');
+                    setShowOptions(false);
+                  }}
+                >
+                  <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         ) : (
@@ -903,7 +923,7 @@ export default function Home() {
           >
             <Feather name="settings" size={24} color="#71727A" />
           </TouchableOpacity>
-          <TouchableOpacity 
+                   <TouchableOpacity 
             style={styles.bottomBarItem}
             onPress={handleLogout}
           >
@@ -911,33 +931,6 @@ export default function Home() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {showOptions && (
-        <TouchableWithoutFeedback onPress={() => setShowOptions(false)}>
-          <View style={styles.overlay}>
-            <View style={styles.optionsContainer}>
-              <TouchableOpacity 
-                style={styles.optionButton}
-                onPress={() => {
-                  router.push('/staticsubs');
-                  setShowOptions(false);
-                }}
-              >
-                <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.optionButton}
-                onPress={() => {
-                  router.push('/subscriptioncreate');
-                  setShowOptions(false);
-                }}
-              >
-                <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      )}
 
       <Modal
         visible={showEditModal}
@@ -1251,7 +1244,6 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1,
     borderColor: 'rgba(70, 73, 229, 0.2)',
-    zIndex: 1000,
   },
   optionButton: {
     backgroundColor: '#4649E5',
@@ -1442,8 +1434,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Medium',
   },
   searchButton: {
-    marginLeft: 'auto',
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(70, 73, 229, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -1680,13 +1677,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Platform.OS === 'ios' ? 20 : 0,
   },
-  overlay: {
+  unreadDot: {
     position: 'absolute',
     top: 0,
-    left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 999,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+    borderWidth: 1,
+    borderColor: '#050511',
   },
 }); 

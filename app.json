@@ -72,20 +72,5 @@
       }
     },
     "owner": "serhatkorkmaz5454"
-  },
-    "build": {
-    "preview": {
-      "distribution": "internal",
-      "android": {
-        "gradleCommand": ":app:assembleRelease"
-      }
-    },
-    "production": {
-      "distribution": "store",
-      "android": {
-        "gradleCommand": ":app:bundleRelease",
-        "autoIncrement": true
-      }
-    }
   }
 }

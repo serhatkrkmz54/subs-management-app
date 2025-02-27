@@ -177,6 +177,16 @@ export default function Settings() {
 
   const handleSaveNotifications = async () => {
     try {
+      if (!editedProfile.settings || editedProfile.settings <= 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Hata',
+          text2: 'Abonelik bitiş bildirim gün sayısı en az 1 gün olmalıdır!',
+          visibilityTime: 2000,
+        });
+        return;
+      }
+
       setLoading(true);
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
@@ -487,16 +497,16 @@ export default function Settings() {
                 style={styles.input}
                 value={editedProfile.settings?.toString()}
                 onChangeText={(text) => {
-                  const days = parseInt(text) || 0;
-                  setEditedProfile({
-                    ...editedProfile,
-                    settings: days
-                  });
+                  const value = parseInt(text);
+                  if (!text) {
+                    setEditedProfile({...editedProfile, settings: undefined});
+                  } else if (value > 0) {
+                    setEditedProfile({...editedProfile, settings: value});
+                  }
                 }}
-                placeholder="Örn: 7"
+                placeholder="Gün sayısı"
                 placeholderTextColor="#71727A"
                 keyboardType="numeric"
-                maxLength={2}
               />
             ) : (
               <Text style={styles.value}>{profile.settings || 5} gün</Text>
