@@ -917,7 +917,7 @@ export default function Home() {
             style={styles.addButton}
             onPress={() => setShowTabOptions(true)}
           >
-            <Feather name="plus" size={24} color="#FFFFFF" />
+            <Feather name="plus" size={32} color="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity 
