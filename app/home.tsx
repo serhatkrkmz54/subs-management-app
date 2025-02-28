@@ -49,6 +49,7 @@ export default function Home() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [greeting, setGreeting] = useState('');
   const [showOptions, setShowOptions] = useState(false);
+  const [showTabOptions, setShowTabOptions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -56,13 +57,13 @@ export default function Home() {
   const [selectedPlan, setSelectedPlan] = useState<EditedPlan | null>(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
+  const [showEmptyStateOptions, setShowEmptyStateOptions] = useState(false);
 
   useEffect(() => {
     fetchProfileAndPlans();
     setGreeting(getGreeting());
     checkExpiredSubscriptions();
-    checkUnreadNotifications();
     const interval = setInterval(checkExpiredSubscriptions, 24 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
@@ -108,18 +109,18 @@ export default function Home() {
         }
       });
       
+      // console.log('Profil yanıtı:', profileResponse.data);
+      // console.log('Ödeme planları:', profileResponse.data.paymentPlans);
+      
       setProfile(profileResponse.data);
-
-      // if (profileResponse.data?.userId) {
-      //   const plansResponse = await axios.get(`${API_URL}/payment-plan/all-plan/${profileResponse.data.userId}`, {
-      //     headers: {
-      //       Authorization: `Bearer ${token}`
-      //     }
-      //   });
-      //   setPaymentPlans(plansResponse.data || []);
-      // }
+      setPaymentPlans(profileResponse.data.paymentPlans || []);
     } catch (error) {
-      console.error('Profil yükleme hatası:', error);
+      Toast.show({
+                  type: 'error',
+                  text1: 'Oturum Hatası',
+                  text2: 'Tekrar oturum açınız!',
+                  visibilityTime: 2000,
+                });
       if (axios.isAxiosError(error)) {
         console.log('Hata detayı:', error.response?.data);
       }
@@ -179,16 +180,18 @@ export default function Home() {
   };
 
   const calculateTotalPayment = (plans: PaymentPlan[]): { TRY: number; USD: number } => {
-    return plans
-      .filter(plan => !isExpired(plan.bitisTarihi))
-      .reduce((acc, plan) => {
-        if (plan.odemeBirimi === 'TRY') {
-          acc.TRY += plan.odemeMiktari;
-        } else if (plan.odemeBirimi === 'USD') {
-          acc.USD += plan.odemeMiktari;
-        }
-        return acc;
-      }, { TRY: 0, USD: 0 });
+    if (!plans || plans.length === 0) {
+      return { TRY: 0, USD: 0 };
+    }
+
+    return plans.reduce((acc, plan) => {
+      if (plan.odemeBirimi === 'TRY' || plan.odemeBirimi === 'TL') {
+        acc.TRY += plan.odemeMiktari;
+      } else if (plan.odemeBirimi === 'USD') {
+        acc.USD += plan.odemeMiktari;
+      }
+      return acc;
+    }, { TRY: 0, USD: 0 });
   };
 
   const onRefresh = useCallback(async () => {
@@ -233,6 +236,7 @@ export default function Home() {
               });
 
               if (response.status === 200) {
+                setPaymentPlans(prevPlans => prevPlans.filter(plan => plan.id !== planId));
                 Toast.show({
                   type: 'success',
                   text1: 'Başarılı',
@@ -472,20 +476,6 @@ export default function Home() {
     </TouchableOpacity>
   );
 
-  const checkUnreadNotifications = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) return;
-
-      const response = await axios.get(`${API_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setHasUnreadNotifications(response.data.length > 0);
-    } catch (error) {
-      console.error('Okunmamış bildirimler kontrol edilirken hata oluştu:', error);
-    }
-  };
 
   if (!profile) {
     return (
@@ -541,7 +531,7 @@ export default function Home() {
                     style={styles.clearButton}
                     onPress={() => setSearchQuery('')}
                   >
-                    <Feather name="x" size={20} color="#71727A" />
+                    <Feather name="x" size={24} color="#71727A" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -553,8 +543,8 @@ export default function Home() {
           <View style={styles.emptyContainer}>
             <View style={styles.emptyContent}>
               <TouchableOpacity 
-                style={styles.addFirstButton}
-                onPress={() => setShowOptions(true)}
+                style={styles.emptyStateAddButton}
+                onPress={() => setShowEmptyStateOptions(true)}
               >
                 <Feather name="plus" size={32} color="#FFFFFF" />
               </TouchableOpacity>
@@ -564,27 +554,33 @@ export default function Home() {
               </Text>
             </View>
 
-            {showOptions && (
-              <View style={styles.optionsContainer}>
-                <TouchableOpacity 
-                  style={styles.optionButton}
-                  onPress={() => {
-                    router.push('/staticsubs');
-                    setShowOptions(false);
-                  }}
-                >
-                  <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.optionButton}
-                  onPress={() => {
-                    router.push('/subscriptioncreate');
-                    setShowOptions(false);
-                  }}
-                >
-                  <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
-                </TouchableOpacity>
-              </View>
+            {showEmptyStateOptions && (
+              <TouchableOpacity 
+                style={styles.tabModalOverlay} 
+                activeOpacity={1}
+                onPress={() => setShowEmptyStateOptions(false)}
+              >
+                <View style={styles.tabOptionsContainer}>
+                  <TouchableOpacity 
+                    style={styles.tabOptionButton}
+                    onPress={() => {
+                      router.push('/staticsubs');
+                      setShowEmptyStateOptions(false);
+                    }}
+                  >
+                    <Text style={styles.tabOptionText}>Hazır aboneliklerden ekle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.tabOptionButton}
+                    onPress={() => {
+                      router.push('/subscriptioncreate');
+                      setShowEmptyStateOptions(false);
+                    }}
+                  >
+                    <Text style={styles.tabOptionText}>Yeni Abonelik Oluştur</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
             )}
           </View>
         ) : (
@@ -612,15 +608,22 @@ export default function Home() {
                   <View style={styles.cardHeader}>
                     <View style={styles.totalAmountContainer}>
                       <Text style={styles.totalLabel}>Toplam Ödeme</Text>
-                      {calculateTotalPayment(profile?.paymentPlans || []).TRY > 0 && (
-                        <Text style={styles.totalAmount}>
-                          {calculateTotalPayment(profile?.paymentPlans || []).TRY.toFixed(2)} ₺
-                        </Text>
+                      {profile?.paymentPlans && profile.paymentPlans.length > 0 && (
+                        <>
+                          {calculateTotalPayment(profile.paymentPlans).TRY > 0 && (
+                            <Text style={styles.totalAmount}>
+                              {calculateTotalPayment(profile.paymentPlans).TRY.toFixed(2)} ₺
+                            </Text>
+                          )}
+                          {calculateTotalPayment(profile.paymentPlans).USD > 0 && (
+                            <Text style={styles.totalAmount}>
+                              {calculateTotalPayment(profile.paymentPlans).USD.toFixed(2)} $
+                            </Text>
+                          )}
+                        </>
                       )}
-                      {calculateTotalPayment(profile?.paymentPlans || []).USD > 0 && (
-                        <Text style={styles.totalAmount}>
-                          {calculateTotalPayment(profile?.paymentPlans || []).USD.toFixed(2)} $
-                        </Text>
+                      {(!profile?.paymentPlans || profile.paymentPlans.length === 0) && (
+                        <Text style={styles.totalAmount}>0.00 ₺</Text>
                       )}
                     </View>
                     <Image 
@@ -912,9 +915,9 @@ export default function Home() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.addButton}
-            onPress={() => setShowOptions(!showOptions)}
+            onPress={() => setShowTabOptions(true)}
           >
-            <Feather name={showOptions ? "x" : "plus"} size={32} color="#FFFFFF" />
+            <Feather name="plus" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -1127,6 +1130,67 @@ export default function Home() {
           minimumDate={selectedPlan?.baslangicTarihi ? new Date(selectedPlan.baslangicTarihi) : new Date()}
         />
       )}
+
+      {/* Orta + butonu için modal */}
+      {showOptions && (
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={0.5}
+          onPress={() => setShowOptions(false)}
+        >
+          <View style={styles.optionsContainer}>
+            <TouchableOpacity 
+              style={styles.optionButton}
+              onPress={() => {
+                router.push('/staticsubs');
+                setShowOptions(false);
+              }}
+            >
+              <Text style={styles.optionText}>Hazır aboneliklerden ekle</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.optionButton}
+              onPress={() => {
+                router.push('/subscriptioncreate');
+                setShowOptions(false);
+              }}
+            >
+              <Text style={styles.optionText}>Yeni Abonelik Oluştur</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Alt tab + butonu için modal */}
+      {showTabOptions && (
+        <TouchableOpacity
+          style={styles.tabModalOverlay}
+          activeOpacity={0.5}
+          onPress={() => setShowTabOptions(false)}
+        >
+          <View style={styles.tabOptionsContainer}>
+            <TouchableOpacity 
+              style={styles.tabOptionButton}
+              onPress={() => {
+                router.push('/staticsubs');
+                setShowTabOptions(false);
+              }}
+            >
+              <Text style={styles.tabOptionText}>Hazır aboneliklerden ekle</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.tabOptionButton}
+              onPress={() => {
+                router.push('/subscriptioncreate');
+                setShowTabOptions(false);
+              }}
+            >
+              <Text style={styles.tabOptionText}>Yeni Abonelik Oluştur</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
+      <Toast />
     </View>
   );
 }
@@ -1203,10 +1267,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  addFirstButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  emptyStateAddButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#4649E5',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1234,13 +1298,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   optionsContainer: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 104 : 84,
-    left: 24,
-    right: 24,
     backgroundColor: '#1A1A2E',
     borderRadius: 16,
     padding: 16,
+    width: '90%',
     gap: 12,
     borderWidth: 1,
     borderColor: 'rgba(70, 73, 229, 0.2)',
@@ -1254,8 +1315,8 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Poppins-Medium',
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
   },
   plansList: {
     flex: 1,
@@ -1499,11 +1560,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    zIndex: 1000,
   },
   modalContent: {
     backgroundColor: '#1A1A2E',
@@ -1687,5 +1752,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF3B30',
     borderWidth: 1,
     borderColor: '#050511',
+  },
+  tabModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  tabOptionsContainer: {
+    backgroundColor: '#1A1A2E',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    gap: 12,
+    marginBottom: Platform.OS === 'ios' ? 120 : 100,
+    borderWidth: 1,
+    borderColor: 'rgba(70, 73, 229, 0.2)',
+  },
+  tabOptionButton: {
+    backgroundColor: '#4649E5',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  tabOptionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
   },
 }); 

@@ -156,9 +156,9 @@ export default function StaticSubsAdd() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Abonelik Adı</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.readOnlyInput]}
               value={formData.platformName}
-              onChangeText={(text: string) => setFormData({ ...formData, platformName: text })}
+              editable={false}
               placeholder="Abonelik adını girin"
               placeholderTextColor="#71727A"
             />
@@ -167,9 +167,9 @@ export default function StaticSubsAdd() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Paket Adı</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.readOnlyInput]}
               value={formData.packageName}
-              onChangeText={(text: string) => setFormData({ ...formData, packageName: text })}
+              editable={false}
               placeholder="Paket adını girin"
               placeholderTextColor="#71727A"
             />
@@ -179,9 +179,9 @@ export default function StaticSubsAdd() {
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>Ödeme Miktarı</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.readOnlyInput]}
                 value={formData.amount}
-                onChangeText={(text: string) => setFormData({ ...formData, amount: text })}
+                editable={false}
                 placeholder="Miktar"
                 placeholderTextColor="#71727A"
                 keyboardType="numeric"
@@ -191,9 +191,9 @@ export default function StaticSubsAdd() {
             <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
               <Text style={styles.label}>Ödeme Birimi</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.readOnlyInput]}
                 value={formData.currency}
-                onChangeText={(text: string) => setFormData({ ...formData, currency: text })}
+                editable={false}
                 placeholder="Birim"
                 placeholderTextColor="#71727A"
               />
@@ -202,18 +202,11 @@ export default function StaticSubsAdd() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Ödeme Sıklığı</Text>
-            <TouchableOpacity 
-              style={[styles.input, styles.selectInput]}
-              onPress={() => setShowFrequencyModal(true)}
-            >
-              <Text style={[
-                styles.selectText,
-                formData.displayFrequency ? styles.selectedText : styles.placeholderText
-              ]}>
+            <View style={[styles.input, styles.readOnlyInput]}>
+              <Text style={styles.readOnlyText}>
                 {formData.displayFrequency || 'Ödeme sıklığını seçin'}
               </Text>
-              <Feather name="chevron-down" size={20} color="#71727A" />
-            </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -462,19 +455,13 @@ const styles = StyleSheet.create({
     color: '#4649E5',
     fontFamily: 'Poppins-Medium',
   },
-  selectText: {
+  readOnlyInput: {
+    backgroundColor: '#1A1A2E',
+    opacity: 0.8,
+  },
+  readOnlyText: {
+    color: '#71727A',
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
-  },
-  selectedText: {
-    color: '#FFFFFF',
-  },
-  placeholderText: {
-    color: '#71727A',
-  },
-  selectInput: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
 }); 
